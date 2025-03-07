@@ -21,6 +21,7 @@
 # Django settings for the GeoNode project.
 import os
 import ast
+from django.utils.translation import gettext_lazy as _
 
 try:
     from urllib.parse import urlparse, urlunparse
