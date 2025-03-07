@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalhes da Atividade</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'ieb/css/detalhe.css' %}">
+    <link rel="stylesheet" href="{% static 'ieb/css/lightbox.css' %}">
+    <link rel="stylesheet" href="{% static 'ieb/css/indicadores.css' %}">
+</head>
+<body>
+    <div class="container">
+        <h1>Detalhes da Atividade</h1>
+
+        <label>Projeto:</label>
+        <div class="field-value">{{ atividade_registro.projeto.nome }}</div>
+
+        <label>Componente:</label>
+        <div class="field-value">{{ atividade_registro.componente.nome }}</div>
+
+        <label>Atividade:</label>
+        <div class="field-value">{{ atividade_registro.atividade.nome }}</div>
+
+        <label>Equipe Responsável:</label>
+        <div class="field-value">{{ atividade_registro.equipe_projeto.equipe.nome }}</div>
+
+        <label>Data Início:</label>
+        <div class="field-value">{{ atividade_registro.data_inicio }}</div>
+
+        <label>Data Final:</label>
+        <div class="field-value">{{ atividade_registro.data_final }}</div>
+
+        <label>Descrição:</label>
+        <div class="field-value">{{ atividade_registro.descricao }}</div>
+
+        <label>Local:</label>
+        <div class="field-value">{{ atividade_registro.local }}</div>
+
+
+        <label>Fotos:</label>
+        <div class="field-value">
+            {% if atividade_registro.fotos_thumbnail %}
+                <img id="thumbnail" src="{{ atividade_registro.fotos_thumbnail.url }}" alt="Fotos Miniatura" style="cursor: pointer;">
+            {% elif atividade_registro.fotos %}
+                <img id="thumbnail" src="{{ atividade_registro.fotos.url }}" alt="Fotos Original" style="max-width: 300px; height: auto; cursor: pointer;">
+            {% else %}
+                <p>Nenhuma foto disponível.</p>
+            {% endif %}
+        </div>
+
+        <!-- Lightbox para visualização ampliada -->
+        <div id="lightbox" class="lightbox">
+            <span class="close" id="close-lightbox">&times;</span>
+            <img id="lightbox-img" src="" alt="Visualização Ampliada">
+        </div>
+
+        <label>Lista de Presença:</label>
+        <div class="field-value">{{ atividade_registro.lista_presenca }}</div>
+
+        <h2>Indicadores Registrados</h2>
+
+        {% if parcerias %}
+            <div class="indicator-section">
+                <h3>Parcerias</h3>
+                <ul>
+                    {% for parceria in parcerias.parcerias.all %}
+                        <li>{{ parceria.nome }} - {{ parceria.tipo }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+
+        {% if treinados %}
+            <div class="indicator-section">
+                <h3>Pessoas Treinadas</h3>
+                <p>Total: {{ treinados.total_pessoas }}</p>
+                <p>Homens: {{ treinados.homens }}</p>
+                <p>Mulheres: {{ treinados.mulheres }}</p>
+                <p>Jovens: {{ treinados.jovens }}</p>
+                <p>Foco do Treinamento: {{ treinados.get_foco_treinamento_display }}</p>
+            </div>
+        {% endif %}
+
+        {% if capacitados %}
+            <div class="indicator-section">
+                <h3>Capacitados</h3>
+                <p>Total de Organizações: {{ capacitados.total_organizacoes }}</p>
+                <p>Foco da Capacitação: {{ capacitados.get_foco_capacitacao_display }}</p>
+                <ul>
+                    {% for organizacao in capacitados.organizacoes.all %}
+                        <li>{{ organizacao.nome }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+
+        {% if area_restrito %}
+            <div class="indicator-section">
+                <h3>Área Restrita</h3>
+                <p>TI: {{ area_restrito.ti.nome }}</p>
+                <p>Área em hectares: {{ area_restrito.area_em_ha }}</p>
+            </div>
+        {% endif %}
+
+        {% if area_direto %}
+            <div class="indicator-section">
+                <h3>Área Direto</h3>
+                <p>Total de TIs: {{ area_direto.total_tis }}</p>
+                <p>Total de Área (ha): {{ area_direto.total_area }}</p>
+            </div>
+        {% endif %}
+
+        {% if area_geral %}
+            <div class="indicator-section">
+                <h3>Área Geral</h3>
+                <p>Total de TIs: {{ area_geral.total_tis }}</p>
+                <p>Total de Área (ha): {{ area_geral.total_area }}</p>
+            </div>
+        {% endif %}
+
+        {% if produtos %}
+            <div class="indicator-section">
+                <h3>Produtos</h3>
+                <ul>
+                    {% for produto in produtos.produtos.all %}
+                        <li>{{ produto.nome }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+
+        {% if contratos %}
+            <div class="indicator-section">
+                <h3>Contratos</h3>
+                <ul>
+                    {% for contrato in contratos.contratos.all %}
+                        <li>{{ contrato.nome }} - {{ contrato.get_estado_display }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+
+        {% if leis %}
+            <div class="indicator-section">
+                <h3>Leis</h3>
+                <ul>
+                    {% for lei in leis.leis.all %}
+                        <li>{{ lei.nome }} - {{ lei.tipo }} - {{ lei.situacao }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+
+        {% if aplicacao %}
+            <div class="indicator-section">
+                <h3>Aplicação</h3>
+                <p>Total de Pessoas: {{ aplicacao.total_pessoas }}</p>
+                <p>Homens: {{ aplicacao.homens }}</p>
+                <p>Mulheres: {{ aplicacao.mulheres }}</p>
+                <p>Jovens: {{ aplicacao.jovens }}</p>
+            </div>
+        {% endif %}
+
+        {% if mobilizados %}
+            <div class="indicator-section">
+                <h3>Mobilizados</h3>
+                <p>Valor Mobilizado: {{ mobilizados.valor_mobilizado }}</p>
+                <p>Tipo de Apoio: {{ mobilizados.tipo_apoio }}</p>
+                <p>Fonte de Apoio: {{ mobilizados.fonte_apoio }}</p>
+            </div>
+        {% endif %}
+
+        {% if request %}
+            <div class="navigation-buttons">
+                <a href="{% url 'atividade_registro_anterior' atividade_registro.id %}" class="btn btn-primary">Anterior</a>
+                <a href="{% url 'atividade_registro_proximo' atividade_registro.id %}" class="btn btn-secondary">Próximo</a>
+            </div>
+        {% endif %}
+    </div>
+    <script src="{% static 'ieb/js/lightbox.js' %}"></script>
+</body>
+</html>

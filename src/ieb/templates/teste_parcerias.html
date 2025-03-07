@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Completo de Parcerias</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.3s ease;
+        }
+        button:hover {
+            background-color: #3e8e41;
+            transform: scale(1.1);
+        }
+        .parcerias-list div {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Teste Completo de Parcerias</h1>
+
+<h2>Parcerias Cadastradas</h2>
+<form method="POST">
+    {% csrf_token %}
+    <div id="parcerias-list" class="parcerias-list">
+        <!-- Aqui serão carregadas as parcerias existentes -->
+        {% for parceria in parcerias %}
+        <div>
+            <input type="checkbox" id="parceria_{{ parceria.id }}" name="parcerias" value="{{ parceria.id }}">
+            <label for="parceria_{{ parceria.id }}">{{ parceria.nome }} - {{ parceria.tipo }}</label>
+        </div>
+        {% endfor %}
+    </div>
+
+    <h2>Adicionar Nova Parceria</h2>
+    <div>
+        <label for="nome">Nome:</label>
+        <input type="text" id="parceria_nome" name="nome" placeholder="Nome da Parceria">
+    </div>
+    <div>
+        <label for="tipo">Tipo:</label>
+        <input type="text" id="parceria_tipo" name="tipo" placeholder="Tipo de Parceria">
+    </div>
+    <button type="button" id="adicionar_parceria_btn">Adicionar Parceria</button>
+</form>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Adicionando um listener para o botão de adicionar parceria
+        const addButton = document.getElementById('adicionar_parceria_btn');
+
+        // Verifica se o botão foi encontrado
+        if (addButton) {
+            console.log('Botão de adicionar parceria encontrado.');
+
+            addButton.addEventListener('click', function() {
+                console.log('Botão de adicionar parceria clicado.');
+
+                const nome = document.getElementById('parceria_nome').value;
+                const tipo = document.getElementById('parceria_tipo').value;
+
+                // Verificando se os campos foram preenchidos
+                if (nome && tipo) {
+                    console.log("Adicionando parceria com Nome: " + nome + " e Tipo: " + tipo);
+
+                    // Enviando requisição para adicionar a nova parceria
+                    fetch("{% url 'adicionar_parceria' %}", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-CSRFToken": "{{ csrf_token }}"
+                        },
+                        body: JSON.stringify({ nome: nome, tipo: tipo })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.id) {
+                            console.log("Parceria adicionada com sucesso. ID: " + data.id);
+
+                            // Adicionando a nova parceria à lista de checkboxes
+                            const newParceriaHTML = `
+                                <div>
+                                    <input type="checkbox" id="parceria_${data.id}" name="parcerias" value="${data.id}" checked>
+                                    <label for="parceria_${data.id}">${data.nome} - ${data.tipo}</label>
+                                </div>
+                            `;
+                            document.getElementById('parcerias-list').insertAdjacentHTML('beforeend', newParceriaHTML);
+
+                            // Limpar os campos de input
+                            document.getElementById('parceria_nome').value = '';
+                            document.getElementById('parceria_tipo').value = '';
+                        } else {
+                            console.error("Erro ao adicionar a parceria:", data.error);
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Erro na requisição:", error);
+                    });
+                } else {
+                    alert("Por favor, preencha todos os campos.");
+                }
+            });
+        } else {
+            console.error("Botão de adicionar parceria não foi encontrado.");
+        }
+    });
+</script>
+
+</body>
+</html>

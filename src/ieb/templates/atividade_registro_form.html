@@ -1,0 +1,114 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro de Atividade</title>
+    <link rel="stylesheet" href="{% static 'ieb/css/estilo.css' %}">
+</head>
+<body>
+    <div class="container">
+        <h1>Formulário de Registro de Atividade</h1>
+        
+        {% if messages %}
+            {% for message in messages %}
+                <div class="message {{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            {{ form.non_field_errors }}
+
+            <div class='section'>
+                <h2>Descrição:</h2>
+                <label for="id_projeto">Projeto: <span style="color: red;">*</span></label>
+                <select id="id_projeto" name="projeto">
+                    <option value="">Selecione um projeto</option>
+                    {% for projeto in form.fields.projeto.queryset %}
+                        <option value="{{ projeto.id }}">{{ projeto.nome }}</option>
+                    {% endfor %}
+                </select>
+                {{ form.projeto.errors }}
+
+                <label for="id_componente">Componente: <span style="color: red;">*</span></label>
+                <select id="id_componente" name="componente">
+                    <option value="">Selecione um componente</option>
+                </select>
+                {{ form.componente.errors }}
+
+                <label for="id_atividade">Atividade: <span style="color: red;">*</span></label>
+                <select id="id_atividade" name="atividade">
+                    <option value="">Selecione uma atividade</option>
+                </select>
+                {{ form.atividade.errors }}
+
+                <label for="id_equipe_projeto">Responsável pelo preenchimento: <span style="color: red;">*</span></label>
+                <select id="id_equipe_projeto" name="equipe_projeto">
+                    <option value="">Selecione uma equipe</option>
+                </select>
+                {{ form.equipe_projeto.errors }}
+
+                {{ form.data_inicio.errors }}
+                <label for="id_data_inicio">Data Início: <span style="color: red;">*</span></label>
+                {{ form.data_inicio }}
+
+                {{ form.data_final.errors }}
+                <label for="id_data_final">Data Final: <span style="color: red;">*</span></label>
+                {{ form.data_final }}
+
+                {{ form.descricao.errors }}
+                <label for="id_descricao">Descrição: <span style="color: red;">*</span></label>
+                {{ form.descricao }}
+
+                {{ form.local.errors }}
+                <label for="id_local">Local: <span style="color: red;">*</span></label>
+                {{ form.local }}
+
+                {{ form.fotos.errors }}
+                <label for="id_fotos">Fotos: <span style="color: red;">{{ form.fotos.errors }}</span></label>
+                {{ form.fotos }}
+
+                {{ form.lista_presenca.errors }}
+                <label for="id_lista_presenca">Lista de Presença: <span style="color: red;">{{ form.fotos.errors }}</span></label>
+                {{ form.lista_presenca }}
+            </div>
+
+            <div class="section">
+                <h2>Indicadores</h2>
+                <h4>Espaços para preencher valores dos indicadores aparecerão automaticamente, após selecionar a atividade referente ao registro. (Escolha a atividade)</h4>
+                <div id="indicadores"></div>
+            </div>
+     
+            <div class='section'>
+                
+                <label for="id_email_organizacao">Email para notificação: <span style="color: red;">*</span></label>
+                <input type="email" id="id_email_organizacao" name="email_organizacao" required>
+                {{ form.email_organizacao.errors }}
+                
+                
+            </div>
+            <div class="center-button">
+                <button type="submit">Salvar</button>
+            </div>
+        </form>
+    </div>
+
+    <div id="url-container"
+         data-url-componentes="{% url 'load_componentes' %}"
+         data-url-equipes="{% url 'load_equipes' %}"
+         data-url-equipes-adicionais="{% url 'load_equipes_adicionais' %}"
+         data-url-atividades="{% url 'load_atividades' %}"
+         data-url-indicadores="{% url 'load_indicadores' %}"
+         data-url-adicionar-parceria="{% url 'adicionar_parceria' %}"
+         data-url-atualizar-situacao-plano="{% url 'atualizar_situacao_plano' %}"
+         data-url-adicionar-plano="{% url 'adicionar_plano' %}"></div>
+
+    <script>
+        const indicadoresConfig = {{ indicadores_config|safe }};
+    </script>
+    <script src="{% static 'ieb/js/script.js' %}"></script>
+    {{ produtos_options|json_script:"produtos-options-data" }}
+</body>
+</html>
