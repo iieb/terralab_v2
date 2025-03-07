@@ -19,6 +19,8 @@
 #########################################################################
 
 from geonode.urls import urlpatterns
+from django.contrib import admin
+from django.urls import include, path
 
 """
 # You can register your own urlpatterns here
@@ -28,3 +30,11 @@ urlpatterns = [
         name='home'),
  ] + urlpatterns
 """
+custom_urlpatterns = [
+
+    path('ieb/', include('ieb.urls')),  # Inclua as URLs do seu app 'ieb'
+
+
+]
+
+urlpatterns += custom_urlpatterns
