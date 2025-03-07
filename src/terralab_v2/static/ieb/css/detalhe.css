@@ -1,0 +1,53 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #636363;
+}
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    background: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+h1 {
+    text-align: center;
+    color: #333;
+}
+label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+}
+.field-value {
+    padding: 8px;
+    background-color: #f4f4f4;
+    margin-bottom: 20px;
+    border-radius: 4px;
+}
+/* Regras de css para os botões de navegação proximo e anterior */
+
+.navigation-buttons {
+    display: flex; /* Alinha os botões em linha */
+    justify-content: center; /* Centraliza os botões */
+    margin-top: 20px; /* Espaçamento acima dos botões */
+}
+
+.navigation-buttons a {
+    padding: 10px 20px; /* Espaçamento interno dos botões */
+    font-size: 16px; /* Tamanho da fonte */
+    border-radius: 5px; /* Bordas arredondadas */
+    text-decoration: none; /* Remove o sublinhado */
+    transition: background-color 0.3s, transform 0.3s; /* Transição suave para efeitos */
+}
+
+.navigation-buttons a:hover {
+    background-color: #0056b3; /* Cor de fundo ao passar o mouse (para btn-primary) */
+    transform: scale(1.05); /* Aumenta levemente o botão ao passar o mouse */
+}
+
+.navigation-buttons a.btn-secondary:hover {
+    background-color: #6c757d; /* Cor de fundo ao passar o mouse (para btn-secondary) */
+}
