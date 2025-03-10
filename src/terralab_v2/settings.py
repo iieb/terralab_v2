@@ -21,6 +21,9 @@
 # Django settings for the GeoNode project.
 import os
 import ast
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 try:
     from django.utils.translation import ugettext_lazy as _
 except ImportError:
@@ -76,6 +79,7 @@ ROOT_URLCONF = os.getenv("ROOT_URLCONF", "{}.urls".format(PROJECT_NAME))
 # - Give priority to local geonode-project ones
 STATICFILES_DIRS = [
     os.path.join(LOCAL_ROOT, "static"),
+    os.path.join(BASE_DIR, "ieb/static"),
 ] + STATICFILES_DIRS
 
 # Location of locale files

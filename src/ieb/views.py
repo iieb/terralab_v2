@@ -803,5 +803,7 @@ def enviar_email_notificacao(atividade_registro_id, email_organizacao):
     # Enviar o e-mail
     email.send()
 
+def apresentacao_moore(request):
+    return render(request, 'apresentacao_moore.html')
 
 
