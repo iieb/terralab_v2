@@ -1,11 +1,12 @@
 from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import path
-from .views import atividade_registro_view, load_componentes, load_atividades, load_equipes, load_equipes_adicionais,load_indicadores, atividade_registro_detalhe_view, teste_parcerias_view,adicionar_parceria, adicionar_plano,atualizar_situacao_plano, adicionar_produto, adicionar_contrato, atualizar_estado_contrato, adicionar_lei, atualizar_situacao_lei, adicionar_modelo, apresentacao_moore
+from .views import atividade_registro_view, atividade_registro_view_v2, load_componentes, load_atividades, load_equipes, load_equipes_adicionais,load_indicadores, atividade_registro_detalhe_view, teste_parcerias_view,adicionar_parceria, adicionar_plano,atualizar_situacao_plano, adicionar_produto, adicionar_contrato, atualizar_estado_contrato, adicionar_lei, atualizar_situacao_lei, adicionar_modelo, apresentacao_moore
 from . import views 
 
 urlpatterns = [
     path('atividade_registro/', atividade_registro_view, name='atividade_registro'),
+    path('atividade_registro/v2/', atividade_registro_view_v2, name='atividade_registro_v2'),
     path('ajax/load-componentes/', load_componentes, name='load_componentes'),
     path('ajax/load-atividades/', load_atividades, name='load_atividades'),
     path('ajax/load-equipes/', load_equipes, name='load_equipes'),

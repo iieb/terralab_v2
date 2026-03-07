@@ -28,6 +28,10 @@ def normalize_string(s):
     return s
 
 def atividade_registro_view(request):
+    return _atividade_registro_process(request, template='atividade_registro_form.html')
+
+
+def __atividade_registro_view_original(request):  # mantido apenas como referência histórica — não usado
     if request.method == 'POST':
         form = AtividadeRegistroForm(request.POST, request.FILES)
         if form.is_valid():
@@ -801,6 +805,305 @@ def enviar_email_notificacao(atividade_registro_id, email_organizacao):
 
     # Enviar o e-mail
     email.send()
+
+def atividade_registro_view_v2(request):
+    """Versão v2 do formulário de registro — mesmo processamento, novo template."""
+    return _atividade_registro_process(request, template='atividade_registro_form_v2.html')
+
+
+def _atividade_registro_process(request, template='atividade_registro_form.html'):
+    if request.method == 'POST':
+        form = AtividadeRegistroForm(request.POST, request.FILES)
+        if form.is_valid():
+            atividade_registro = form.save()
+
+            treinados_data = {'total_pessoas': None, 'homens': None, 'mulheres': None, 'jovens': None, 'foco_treinamento': None}
+            planos_data = {'nome': '', 'tipo': '', 'situacao': ''}
+            capacitados_data = {'organizacoes': [], 'total_organizacoes': 0, 'foco_capacitacao': None}
+            parcerias_data = {'parcerias': [], 'total_parcerias': 0}
+            area_geral_data = {'tis': []}
+            area_direto_data = {'tis': []}
+            area_restrito_data = {'ti': None, 'area_em_ha': None}
+            produtos_data = {'produtos': [], 'total_produtos': 0}
+            contratos_data = {'contratos': []}
+            leis_data = {'leis': []}
+            aplicacao_data = {'total_pessoas': None, 'homens': None, 'mulheres': None, 'jovens': None}
+            mobilizados_data = {'valor_mobilizado': None, 'tipo_apoio': None, 'fonte_apoio': None}
+            modelos_data = {'modelos': [], 'status': {}}
+
+            treinados_exist = leis_exist = planos_exist = capacitados_exist = parcerias_exist = False
+            area_geral_exist = area_direto_exist = area_restrito_exist = False
+            produtos_exist = contratos_exist = aplicacao_exist = mobilizados_exist = modelos_exist = False
+
+            for key, value in request.POST.items():
+                if key.startswith('indicadores_'):
+                    try:
+                        parts = key.split('_')
+                        indicador_id = int(parts[1])
+                        field_name = '_'.join(parts[2:])
+                        indicador = Indicador.objects.get(id=indicador_id)
+
+                        if indicador.tipo == 'treinados':
+                            treinados_exist = True
+                            if field_name == 'total_pessoas': treinados_data['total_pessoas'] = int(value)
+                            elif field_name == 'homens': treinados_data['homens'] = int(value)
+                            elif field_name == 'mulheres': treinados_data['mulheres'] = int(value)
+                            elif field_name == 'jovens': treinados_data['jovens'] = int(value)
+                            elif field_name == 'foco_treinamento': treinados_data['foco_treinamento'] = value
+
+                        elif indicador.tipo == 'planos':
+                            planos_exist = True
+                            if field_name == 'nome': planos_data['nome'] = value
+                            elif field_name == 'tipo': planos_data['tipo'] = value
+                            elif field_name == 'situacao': planos_data['situacao'] = value
+
+                        elif indicador.tipo == 'capacitados':
+                            capacitados_exist = True
+                            if field_name == 'organizacoes': capacitados_data['organizacoes'].extend(request.POST.getlist(key))
+                            elif field_name == 'foco_capacitacao': capacitados_data['foco_capacitacao'] = value
+
+                        elif indicador.tipo == 'parcerias':
+                            parcerias_exist = True
+                            if field_name == 'parcerias': parcerias_data['parcerias'].extend(request.POST.getlist(key))
+
+                        elif indicador.tipo == 'area_geral':
+                            area_geral_exist = True
+                            if field_name == 'tis': area_geral_data['tis'].extend(request.POST.getlist(key))
+
+                        elif indicador.tipo == 'area_direto':
+                            area_direto_exist = True
+                            if field_name == 'tis': area_direto_data['tis'].extend(request.POST.getlist(key))
+
+                        elif indicador.tipo == 'area_restrito':
+                            area_restrito_exist = True
+                            if field_name == 'ti': area_restrito_data['ti'] = value
+                            elif field_name == 'area_em_ha':
+                                valor = value.replace(',', '.')
+                                try:
+                                    area_restrito_data['area_em_ha'] = Decimal(valor)
+                                except (InvalidOperation, ValueError):
+                                    area_restrito_data['area_em_ha'] = None
+
+                        elif indicador.tipo == 'produtos':
+                            produtos_exist = True
+                            if field_name == 'produtos': produtos_data['produtos'].extend(request.POST.getlist(key))
+
+                        elif indicador.tipo == 'contratos':
+                            contratos_exist = True
+                            if field_name == 'contratos': contratos_data['contratos'].extend(request.POST.getlist(key))
+
+                        elif indicador.tipo == 'leis_politicas':
+                            leis_exist = True
+                            if field_name == 'leis': leis_data['leis'].extend(request.POST.getlist(key))
+
+                        elif indicador.tipo == 'aplicacao':
+                            aplicacao_exist = True
+                            if field_name == 'total_pessoas': aplicacao_data['total_pessoas'] = int(value)
+                            elif field_name == 'homens': aplicacao_data['homens'] = int(value)
+                            elif field_name == 'mulheres': aplicacao_data['mulheres'] = int(value)
+                            elif field_name == 'jovens': aplicacao_data['jovens'] = int(value)
+
+                        elif indicador.tipo == 'mobilizados':
+                            mobilizados_exist = True
+                            if field_name == 'valor_mobilizado': mobilizados_data['valor_mobilizado'] = value
+                            elif field_name == 'tipo_apoio': mobilizados_data['tipo_apoio'] = value
+                            elif field_name == 'fonte_apoio': mobilizados_data['fonte_apoio'] = value
+
+                        elif indicador.tipo == 'outro':
+                            modelos_exist = True
+                            if field_name == 'modelos': modelos_data['modelos'].extend(request.POST.getlist(key))
+                            elif field_name.startswith('status_modelo_'):
+                                modelo_id = field_name.split('status_modelo_')[1]
+                                modelos_data['status'][modelo_id] = value
+                            elif field_name == 'novos_modelos':
+                                for nome in [n.strip() for n in value.split(',') if n.strip()]:
+                                    novo_modelo = Modelo.objects.create(nome=nome)
+                                    modelos_data['modelos'].append(str(novo_modelo.id))
+
+                    except (Indicador.DoesNotExist, ValueError) as e:
+                        print(f"Erro ao processar o indicador {key}: {e}")
+                        continue
+
+            if treinados_exist and all(v is not None for v in treinados_data.values()):
+                Treinados.objects.create(atividade_registro=atividade_registro, **treinados_data)
+
+            if capacitados_exist and capacitados_data['organizacoes'] and capacitados_data['foco_capacitacao']:
+                inst = Capacitados(atividade_registro=atividade_registro, foco_capacitacao=capacitados_data['foco_capacitacao'])
+                inst.save()
+                inst.organizacoes.set(capacitados_data['organizacoes'])
+                inst.total_organizacoes = inst.organizacoes.count()
+                inst.save()
+
+            if parcerias_exist and parcerias_data['parcerias']:
+                inst = Parcerias(atividade_registro=atividade_registro)
+                inst.save()
+                inst.parcerias.set(parcerias_data['parcerias'])
+                inst.total_parcerias = len(parcerias_data['parcerias'])
+                inst.save()
+
+            if planos_exist and planos_data['nome'] and planos_data['tipo'] and planos_data['situacao']:
+                Plano.objects.create(atividade_registro=atividade_registro, **planos_data)
+
+            if area_geral_exist and area_geral_data['tis']:
+                inst = AreaGeral(atividade_registro=atividade_registro)
+                inst.save()
+                inst.tis.set(area_geral_data['tis'])
+                inst.total_tis = inst.tis.count()
+                inst.save()
+
+            if area_direto_exist and area_direto_data['tis']:
+                inst = AreaDireto(atividade_registro=atividade_registro)
+                inst.save()
+                inst.tis.set(area_direto_data['tis'])
+                inst.total_tis = inst.tis.count()
+                inst.save()
+
+            if area_restrito_exist and area_restrito_data['ti'] and area_restrito_data['area_em_ha']:
+                AreaRestrito.objects.create(
+                    atividade_registro=atividade_registro,
+                    ti_id=area_restrito_data['ti'],
+                    area_em_ha=area_restrito_data['area_em_ha']
+                )
+
+            if produtos_exist and produtos_data['produtos']:
+                inst = Produtos(atividade_registro=atividade_registro)
+                inst.save()
+                inst.produtos.set(produtos_data['produtos'])
+                inst.total_produtos = inst.produtos.count()
+                inst.save()
+
+            if contratos_exist and contratos_data['contratos']:
+                inst = Contratos(atividade_registro=atividade_registro)
+                inst.save()
+                inst.contratos.set(contratos_data['contratos'])
+                inst.save()
+
+            if leis_exist and leis_data['leis']:
+                inst = Leis(atividade_registro=atividade_registro)
+                inst.save()
+                inst.leis.set(leis_data['leis'])
+                inst.save()
+
+            if aplicacao_exist and all(v is not None for v in aplicacao_data.values()):
+                Aplicacao.objects.create(atividade_registro=atividade_registro, **aplicacao_data)
+
+            if mobilizados_exist and mobilizados_data['valor_mobilizado'] and mobilizados_data['tipo_apoio'] and mobilizados_data['fonte_apoio']:
+                Mobilizados.objects.create(atividade_registro=atividade_registro, **mobilizados_data)
+
+            if modelos_exist:
+                for modelo_id in modelos_data['modelos']:
+                    status = modelos_data['status'].get(modelo_id, '')
+                    if status:
+                        AtividadeRegistroModelo.objects.create(
+                            atividade_registro=atividade_registro,
+                            modelo_id=int(modelo_id),
+                            status=status
+                        )
+
+            atividade_registro = form.save()
+            email_organizacao = form.cleaned_data.get('email_organizacao')
+            enviar_email_notificacao(atividade_registro.id, email_organizacao)
+            messages.success(request, 'Registro de atividade salvo com sucesso!')
+            return redirect('atividade_registro_detalhe', pk=atividade_registro.pk)
+        else:
+            messages.error(request, 'Erro ao salvar o registro de atividade. Verifique os campos e tente novamente.')
+            print(form.errors)
+    else:
+        form = AtividadeRegistroForm()
+
+    organizacoes = Organizacao.objects.all()
+    parcerias    = Parceria.objects.all()
+    planos       = Plano.objects.all()
+    tis_list     = TIs.objects.all()
+    produtos     = Produto.objects.all()
+    contratos    = Contrato.objects.all()
+    leis         = Lei.objects.all()
+    modelos_existentes = Modelo.objects.all()
+
+    indicadores_config = {
+        "treinados": [
+            {"name": "total_pessoas", "type": "number", "label": "Total de Pessoas Treinadas"},
+            {"name": "homens", "type": "number", "label": "Homens"},
+            {"name": "mulheres", "type": "number", "label": "Mulheres"},
+            {"name": "jovens", "type": "number", "label": "Jovens"},
+            {"name": "foco_treinamento", "type": "select", "label": "Foco do Treinamento", "options": [
+                {"value": "implementacao", "label": "Implementação melhorada/monitoramento/vigilância"},
+                {"value": "ativ_prod", "label": "Meios de subsistência/cadeia de valor sustentáveis melhorados"},
+                {"value": "governanca", "label": "Fortalecimento institucional/capacitação organizacional/governança"},
+            ]},
+        ],
+        "leis_politicas": [
+            {"name": "leis", "type": "checkbox", "label": "Leis", "options": [{'value': l.id, 'label': str(l)} for l in leis]},
+        ],
+        "planos": [
+            {"name": "plano", "type": "checkbox", "label": "Planos", "options": [{'value': p.id, 'label': str(p)} for p in planos]},
+        ],
+        "capacitados": [
+            {"name": "organizacoes", "type": "checkbox", "label": "Organizações", "options": [{'value': o.id, 'label': o.nome} for o in organizacoes]},
+            {"name": "foco_capacitacao", "type": "select", "label": "Foco da Capacitação", "options": [
+                {"value": "implementacao", "label": "Implementação melhorada/monitoramento/vigilância"},
+                {"value": "ativ_prod", "label": "Meios de subsistência/cadeia de valor sustentáveis melhorados"},
+                {"value": "governanca", "label": "Fortalecimento institucional/capacitação organizacional/governança"},
+            ]},
+        ],
+        "parcerias": [
+            {"name": "parcerias", "type": "checkbox", "label": "Parcerias", "options": [{'value': p.id, 'label': f"{p.nome} - {p.tipo}"} for p in parcerias]},
+        ],
+        "area_geral": [
+            {"name": "tis", "type": "checkbox", "label": "Selecione as TIs para Área Geral", "options": [{'value': t.id, 'label': t.nome} for t in tis_list]},
+        ],
+        "area_direto": [
+            {"name": "tis", "type": "checkbox", "label": "Selecione as TIs para Área Direta", "options": [{'value': t.id, 'label': t.nome} for t in tis_list]},
+        ],
+        "area_restrito": [
+            {"name": "ti", "type": "select", "label": "Selecione a TI para Área Restrita", "options": [{'value': t.id, 'label': t.nome} for t in tis_list]},
+            {"name": "area_em_ha", "type": "number", "label": "Área em hectares (ha)", "step": "0.01"},
+        ],
+        "produtos": [
+            {"name": "produtos", "type": "checkbox", "label": "Produtos", "options": [{'value': p.id, 'label': p.nome} for p in produtos]},
+        ],
+        "contratos": [
+            {"name": "contratos", "type": "checkbox", "label": "Contratos", "options": [{'value': c.id, 'label': str(c)} for c in contratos]},
+        ],
+        "aplicacao": [
+            {"name": "total_pessoas", "type": "number", "label": "Total de Pessoas"},
+            {"name": "homens", "type": "number", "label": "Homens"},
+            {"name": "mulheres", "type": "number", "label": "Mulheres"},
+            {"name": "jovens", "type": "number", "label": "Jovens"},
+        ],
+        "mobilizados": [
+            {"name": "valor_mobilizado", "type": "number", "label": "Valor Mobilizado"},
+            {"name": "tipo_apoio", "type": "select", "label": "Tipo de Apoio", "options": [
+                {"value": "Contribuição em dinheiro", "label": "Contribuição em dinheiro"},
+                {"value": "Voluntariado", "label": "Voluntariado"},
+                {"value": "Doação do tempo dos funcionários", "label": "Doação do tempo dos funcionários"},
+                {"value": "Doação de suprimentos, equipamentos", "label": "Doação de suprimentos, equipamentos"},
+                {"value": "Propriedade intelectual", "label": "Propriedade intelectual"},
+            ]},
+            {"name": "fonte_apoio", "type": "select", "label": "Fonte de Apoio", "options": [
+                {"value": "Renda proveniente da atividades/projeto", "label": "Renda proveniente da atividades/projeto"},
+                {"value": "Empresas", "label": "Empresas"},
+                {"value": "Fundação privada", "label": "Fundação privada"},
+                {"value": "Outros doadores (incluindo multilaterais)", "label": "Outros doadores (incluindo multilaterais)"},
+                {"value": "Outras organizações sem fins lucrativos", "label": "Outras organizações sem fins lucrativos"},
+                {"value": "Indivíduo de alta renda/Investidor anjo", "label": "Indivíduo de alta renda/Investidor anjo"},
+                {"value": "OUTRO (especifique)", "label": "OUTRO (especifique)"},
+            ]},
+        ],
+        "outro": [
+            {"name": "modelos", "type": "checkbox", "label": "Selecione os Modelos", "options": [{'value': m.id, 'label': m.nome} for m in modelos_existentes]},
+            {"name": "novos_modelos", "type": "text", "label": "Adicionar Novos Modelos (separados por vírgula)"},
+        ],
+    }
+
+    produtos_options = [{'value': p.id, 'label': p.nome} for p in produtos]
+
+    return render(request, template, {
+        'form': form,
+        'indicadores_config': indicadores_config,
+        'produtos_options': produtos_options,
+    })
+
 
 def apresentacao_moore(request):
     return render(request, 'apresentacao_moore.html')

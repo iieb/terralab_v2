@@ -1,0 +1,262 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro de Atividade</title>
+    <link rel="stylesheet" href="{% static 'ieb/css/form_v2.css' %}">
+</head>
+<body>
+
+<div class="page-wrapper">
+
+    <header class="form-header">
+        <h1>Registro de Atividade</h1>
+        <p class="form-subtitle">Preencha as etapas abaixo para registrar a execução de uma atividade</p>
+    </header>
+
+    {% if messages %}
+        <div class="messages-wrapper">
+            {% for message in messages %}
+                <div class="message {{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- Barra de progresso -->
+    <div class="stepper">
+        <div class="step active" data-step="1">
+            <div class="step-circle">1</div>
+            <span class="step-label">Identificação</span>
+        </div>
+        <div class="step-line"></div>
+        <div class="step" data-step="2">
+            <div class="step-circle">2</div>
+            <span class="step-label">Detalhamento</span>
+        </div>
+        <div class="step-line"></div>
+        <div class="step" data-step="3">
+            <div class="step-circle">3</div>
+            <span class="step-label">Indicadores</span>
+        </div>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" id="main-form" novalidate>
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+
+        <!-- ================================================================
+             ETAPA 1 — IDENTIFICAÇÃO
+        ================================================================ -->
+        <div class="form-step active" id="step-1">
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-icon">&#128196;</span>
+                    <h2>Identificação</h2>
+                </div>
+                <div class="card-body">
+
+                    <div class="field-group">
+                        <label for="id_projeto">Projeto <span class="required">*</span></label>
+                        <select id="id_projeto" name="projeto" required>
+                            <option value="">Selecione um projeto</option>
+                            {% for projeto in form.fields.projeto.queryset %}
+                                <option value="{{ projeto.id }}">{{ projeto.nome }}</option>
+                            {% endfor %}
+                        </select>
+                        {{ form.projeto.errors }}
+                    </div>
+
+                    <div class="field-row">
+                        <div class="field-group">
+                            <label for="id_componente">Componente <span class="required">*</span></label>
+                            <select id="id_componente" name="componente" required disabled>
+                                <option value="">Selecione um componente</option>
+                            </select>
+                            {{ form.componente.errors }}
+                        </div>
+
+                        <div class="field-group">
+                            <label for="id_atividade">Atividade <span class="required">*</span></label>
+                            <select id="id_atividade" name="atividade" required disabled>
+                                <option value="">Selecione uma atividade</option>
+                            </select>
+                            {{ form.atividade.errors }}
+                        </div>
+                    </div>
+
+                    <div class="field-group">
+                        <label for="id_equipe_projeto">Responsável pelo preenchimento <span class="required">*</span></label>
+                        <select id="id_equipe_projeto" name="equipe_projeto" required disabled>
+                            <option value="">Selecione</option>
+                        </select>
+                        {{ form.equipe_projeto.errors }}
+                    </div>
+
+                    <div class="field-row">
+                        <div class="field-group">
+                            <label for="id_data_inicio">Data de início <span class="required">*</span></label>
+                            {{ form.data_inicio }}
+                            {{ form.data_inicio.errors }}
+                        </div>
+                        <div class="field-group">
+                            <label for="id_data_final">Data de encerramento <span class="required">*</span></label>
+                            {{ form.data_final }}
+                            {{ form.data_final.errors }}
+                        </div>
+                    </div>
+
+                    <div class="field-group">
+                        <label for="id_local">Local de realização <span class="required">*</span></label>
+                        {{ form.local }}
+                        {{ form.local.errors }}
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="step-nav right">
+                <button type="button" class="btn btn-primary" id="btn-to-step2">Próximo &rarr;</button>
+            </div>
+        </div>
+
+        <!-- ================================================================
+             ETAPA 2 — DETALHAMENTO
+        ================================================================ -->
+        <div class="form-step" id="step-2">
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-icon">&#128221;</span>
+                    <h2>Detalhamento da Atividade</h2>
+                </div>
+                <div class="card-body">
+
+                    <div class="field-group">
+                        <label for="id_descricao">Descrição da atividade <span class="required">*</span></label>
+                        {{ form.descricao }}
+                        {{ form.descricao.errors }}
+                    </div>
+
+                    <div class="field-row">
+                        <div class="field-group">
+                            <label for="id_fotos">Fotos</label>
+                            <div class="file-upload-area" id="fotos-upload-area">
+                                <span class="file-icon">&#128247;</span>
+                                <span class="file-label">Clique ou arraste uma foto aqui</span>
+                                {{ form.fotos }}
+                            </div>
+                            {{ form.fotos.errors }}
+                        </div>
+                        <div class="field-group">
+                            <label for="id_lista_presenca">Lista de presença</label>
+                            <div class="file-upload-area" id="lista-upload-area">
+                                <span class="file-icon">&#128203;</span>
+                                <span class="file-label">Clique ou arraste a lista aqui</span>
+                                {{ form.lista_presenca }}
+                            </div>
+                            {{ form.lista_presenca.errors }}
+                        </div>
+                    </div>
+
+                    <div class="collapsible-group">
+                        <button type="button" class="collapsible-toggle">
+                            Campos narrativos (desafios, sucesso, boas práticas...)
+                            <span class="toggle-icon">&#43;</span>
+                        </button>
+                        <div class="collapsible-content">
+                            <div class="field-group">
+                                <label for="id_desafios">Desafios encontrados</label>
+                                {{ form.desafios }}
+                            </div>
+                            <div class="field-group">
+                                <label for="id_propostas">Propostas de melhoria</label>
+                                {{ form.propostas }}
+                            </div>
+                            <div class="field-group">
+                                <label for="id_sucesso">História de sucesso</label>
+                                {{ form.sucesso }}
+                            </div>
+                            <div class="field-group">
+                                <label for="id_melhores_praticas">Melhores práticas</label>
+                                {{ form.melhores_praticas }}
+                            </div>
+                            <div class="field-group">
+                                <label for="id_comentarios">Comentários adicionais</label>
+                                {{ form.comentarios }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="field-group">
+                        <label>Equipe adicional</label>
+                        <div class="checkbox-group" id="id_equipe_adicional"></div>
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="step-nav">
+                <button type="button" class="btn btn-secondary" id="btn-back-to-step1">&larr; Anterior</button>
+                <button type="button" class="btn btn-primary" id="btn-to-step3">Próximo &rarr;</button>
+            </div>
+        </div>
+
+        <!-- ================================================================
+             ETAPA 3 — INDICADORES + FINALIZAÇÃO
+        ================================================================ -->
+        <div class="form-step" id="step-3">
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-icon">&#128200;</span>
+                    <h2>Indicadores</h2>
+                </div>
+                <div class="card-body">
+                    <p class="hint" id="indicadores-hint">
+                        Os indicadores associados à atividade selecionada aparecerão aqui automaticamente.
+                    </p>
+                    <div id="indicadores"></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-icon">&#128231;</span>
+                    <h2>Notificação</h2>
+                </div>
+                <div class="card-body">
+                    <div class="field-group">
+                        <label for="id_email_organizacao">E-mail para notificação <span class="required">*</span></label>
+                        <input type="email" id="id_email_organizacao" name="email_organizacao" required
+                               placeholder="email@organizacao.org.br">
+                        {{ form.email_organizacao.errors }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="step-nav">
+                <button type="button" class="btn btn-secondary" id="btn-back-to-step2">&larr; Anterior</button>
+                <button type="submit" class="btn btn-success">&#10003; Salvar registro</button>
+            </div>
+        </div>
+
+    </form>
+</div>
+
+<div id="url-container"
+     data-url-componentes="{% url 'load_componentes' %}"
+     data-url-equipes="{% url 'load_equipes' %}"
+     data-url-equipes-adicionais="{% url 'load_equipes_adicionais' %}"
+     data-url-atividades="{% url 'load_atividades' %}"
+     data-url-indicadores="{% url 'load_indicadores' %}"
+     data-url-adicionar-parceria="{% url 'adicionar_parceria' %}"
+     data-url-atualizar-situacao-plano="{% url 'atualizar_situacao_plano' %}"
+     data-url-adicionar-plano="{% url 'adicionar_plano' %}"></div>
+
+<script>
+    const indicadoresConfig = {{ indicadores_config|safe }};
+</script>
+<script src="{% static 'ieb/js/script_v2.js' %}"></script>
+{{ produtos_options|json_script:"produtos-options-data" }}
+</body>
+</html>
