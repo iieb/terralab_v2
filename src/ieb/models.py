@@ -272,13 +272,14 @@ class Indicador(models.Model):
         ('mobilizados', 'Recursos Mobilizados'),
         ('produtos', 'Produtos'),
         ('contratos', 'Contratos'),
+        ('outro', 'Outro'),
     ]
 
     nome = models.CharField(max_length=255)
     codigo = models.CharField(max_length=255)
     descricao = models.CharField(max_length=255)
     reporte = models.CharField(max_length=255)
-    tipo = models.CharField(max_length=30, choices=TIPO_CHOICES)
+    tipo = models.CharField(max_length=30, choices=TIPO_CHOICES, default='outro')
 
     def __str__(self):
         return self.nome
