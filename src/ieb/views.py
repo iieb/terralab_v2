@@ -71,7 +71,7 @@ def atividade_registro_view(request):
                         field_name = '_'.join(parts[2:])
                         indicador = Indicador.objects.get(id=indicador_id)
 
-                        if indicador.nome.lower() == 'treinados':
+                        if indicador.tipo == 'treinados':
                             treinados_exist = True
                             if field_name == 'total_pessoas':
                                 treinados_data['total_pessoas'] = int(value)
@@ -84,7 +84,7 @@ def atividade_registro_view(request):
                             elif field_name == 'foco_treinamento':
                                 treinados_data['foco_treinamento'] = value
 
-                        elif indicador.nome.lower() == 'planos':
+                        elif indicador.tipo == 'planos':
                             planos_exist = True
                             if field_name == 'nome':
                                 planos_data['nome'] = value
@@ -93,55 +93,55 @@ def atividade_registro_view(request):
                             elif field_name == 'situacao':
                                 planos_data['situacao'] = value
 
-                        elif indicador.nome.lower() == 'capacitados':
+                        elif indicador.tipo == 'capacitados':
                             capacitados_exist = True
                             if field_name == 'organizacoes':
                                 capacitados_data['organizacoes'].extend(request.POST.getlist(key))
                             elif field_name == 'foco_capacitacao':
                                 capacitados_data['foco_capacitacao'] = value
 
-                        elif indicador.nome.lower() == 'parcerias':
+                        elif indicador.tipo == 'parcerias':
                             parcerias_exist = True
                             if field_name == 'parcerias':
                                 parcerias_data['parcerias'].extend(request.POST.getlist(key))
 
-                        elif indicador.nome.lower() == 'área geral':
+                        elif indicador.tipo == 'area_geral':
                             area_geral_exist = True
                             if field_name == 'tis':
                                 area_geral_data['tis'].extend(request.POST.getlist(key))
 
-                        elif indicador.nome.lower() == 'área direto':
+                        elif indicador.tipo == 'area_direto':
                             area_direto_exist = True
                             if field_name == 'tis':
                                 area_direto_data['tis'].extend(request.POST.getlist(key))
 
-                        elif indicador.nome.lower() == 'área restrito':
+                        elif indicador.tipo == 'area_restrito':
                             area_restrito_exist = True
                             if field_name == 'ti':
-                                area_restrito_data['ti'] = value  # Assumindo que `value` é o ID da TI selecionada
+                                area_restrito_data['ti'] = value
                             elif field_name == 'area_em_ha':
                                 valor = value.replace(',', '.')
                                 try:
                                     area_restrito_data['area_em_ha'] = Decimal(valor)
                                 except (InvalidOperation, ValueError):
-                                    area_restrito_data['area_em_ha'] = None  # Ou lidar com o erro de forma apropriada
+                                    area_restrito_data['area_em_ha'] = None
 
-                        elif indicador.nome.lower() == 'produtos':
+                        elif indicador.tipo == 'produtos':
                             produtos_exist = True
                             if field_name == 'produtos':
                                 produtos_data['produtos'].extend(request.POST.getlist(key))
 
-                        elif indicador.nome.lower() == 'contratos':
+                        elif indicador.tipo == 'contratos':
                             contratos_exist = True
                             if field_name == 'contratos':
                                 contratos_data['contratos'].extend(request.POST.getlist(key))
 
-                        elif indicador.nome.lower() == 'leis':
+                        elif indicador.tipo == 'leis_politicas':
                             leis_exist = True
                             if field_name == 'leis':
                                 leis_data['leis'].extend(request.POST.getlist(key))
 
-                        elif indicador.nome.lower() == 'aplicação':
+                        elif indicador.tipo == 'aplicacao':
                             aplicacao_exist = True
                             if field_name == 'total_pessoas':
                                 aplicacao_data['total_pessoas'] = int(value)
@@ -152,23 +152,22 @@ def atividade_registro_view(request):
                             elif field_name == 'jovens':
                                 aplicacao_data['jovens'] = int(value)
 
-                        if indicador.nome.lower() == 'mobilizados':
+                        elif indicador.tipo == 'mobilizados':
                             mobilizados_exist = True
                             if field_name == 'valor_mobilizado':
-                                mobilizados_data['valor_mobilizado'] = value  # Manter como string para DecimalField
+                                mobilizados_data['valor_mobilizado'] = value
                             elif field_name == 'tipo_apoio':
                                 mobilizados_data['tipo_apoio'] = value
                             elif field_name == 'fonte_apoio':
                                 mobilizados_data['fonte_apoio'] = value
 
-                        if indicador.nome.lower() == 'modelos':
+                        elif indicador.tipo == 'outro':
                             modelos_exist = True
                             if field_name == 'modelos':
                                 modelos_data['modelos'].extend(request.POST.getlist(key))
                             elif field_name.startswith('status_modelo_'):
                                 modelo_id = field_name.split('status_modelo_')[1]
-                                status = value
-                                modelos_data['status'][modelo_id] = status
+                                modelos_data['status'][modelo_id] = value
                             elif field_name == 'novos_modelos':
                                 novos_modelos = [nome.strip() for nome in value.split(',') if nome.strip()]
                                 for nome in novos_modelos:
@@ -328,7 +327,7 @@ def atividade_registro_view(request):
                 {"value": "governanca", "label": "Fortalecimento institucional/capacitação organizacional/governança"}
             ]}
         ],
-        "leis": [
+        "leis_politicas": [
             {"name": "leis", "type": "checkbox", "label": "Leis", "options": leis_options}
         ],
         "planos": [
@@ -381,7 +380,7 @@ def atividade_registro_view(request):
         "contratos": [
             {"name": "contratos", "type": "checkbox", "label": "Contratos", "options": contratos_options}
         ],
-        normalize_string("Aplicação"): [
+        "aplicacao": [
             {"name": "total_pessoas", "type": "number", "label": "Total de Pessoas"},
             {"name": "homens", "type": "number", "label": "Homens"},
             {"name": "mulheres", "type": "number", "label": "Mulheres"},
@@ -455,7 +454,7 @@ def load_equipes_adicionais(request):
 def load_indicadores(request):
     atividade_id = request.GET.get('atividade')
     indicadores = Indicador.objects.filter(meta__atividade_id=atividade_id).distinct()
-    data = [{'id': indicador.id, 'nome': indicador.nome} for indicador in indicadores]
+    data = [{'id': indicador.id, 'nome': indicador.nome, 'tipo': indicador.tipo} for indicador in indicadores]
     return JsonResponse(data, safe=False)
 
 def atividade_registro_detalhe_view(request, pk):
