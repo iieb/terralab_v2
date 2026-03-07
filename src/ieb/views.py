@@ -276,13 +276,11 @@ def __atividade_registro_view_original(request):  # mantido apenas como referên
 
 
             atividade_registro = form.save()
-
-            # Capturar o e-mail da organização inserido pelo usuário
             email_organizacao = form.cleaned_data.get('email_organizacao')
-
-            # Enviar e-mail de notificação
-            enviar_email_notificacao(atividade_registro.id, email_organizacao)
-
+            try:
+                enviar_email_notificacao(atividade_registro.id, email_organizacao)
+            except Exception as e:
+                print(f"Aviso: falha ao enviar e-mail de notificação: {e}")
             messages.success(request, 'Registro de atividade salvo com sucesso!')
             return redirect('atividade_registro_detalhe', pk=atividade_registro.pk)
         else:
@@ -1002,7 +1000,10 @@ def _atividade_registro_process(request, template='atividade_registro_form.html'
 
             atividade_registro = form.save()
             email_organizacao = form.cleaned_data.get('email_organizacao')
-            enviar_email_notificacao(atividade_registro.id, email_organizacao)
+            try:
+                enviar_email_notificacao(atividade_registro.id, email_organizacao)
+            except Exception as e:
+                print(f"Aviso: falha ao enviar e-mail de notificação: {e}")
             messages.success(request, 'Registro de atividade salvo com sucesso!')
             return redirect('atividade_registro_detalhe', pk=atividade_registro.pk)
         else:
