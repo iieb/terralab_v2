@@ -177,13 +177,108 @@ class ProjetoTI(models.Model):
         return f"{self.tis.nome} - {self.projeto.nome}"
 
 
+class ProjetoIndicador(models.Model):
+    projeto = models.ForeignKey(Projeto, on_delete=models.CASCADE, related_name='projeto_indicadores')
+    indicador = models.ForeignKey('Indicador', on_delete=models.CASCADE, related_name='projeto_indicadores')
+
+    class Meta:
+        unique_together = ('projeto', 'indicador')
+        verbose_name = 'Indicador do Projeto'
+        verbose_name_plural = 'Indicadores do Projeto'
+
+    def __str__(self):
+        return f"{self.projeto.nome_fant} — {self.indicador.nome}"
+
+
+# GESTÃO DE PROJETOS - ÁREAS TEMÁTICAS E VÍNCULOS DE ATIVIDADE
+
+class AreaTematica(models.Model):
+    nome = models.CharField(max_length=255)
+    descricao = models.TextField(blank=True)
+
+    class Meta:
+        verbose_name = 'Área Temática'
+        verbose_name_plural = 'Áreas Temáticas'
+
+    def __str__(self):
+        return self.nome
+
+
+class AtividadeAreaTematica(models.Model):
+    atividade = models.ForeignKey(Atividade, on_delete=models.CASCADE, related_name='areas_tematicas')
+    area_tematica = models.ForeignKey(AreaTematica, on_delete=models.CASCADE, related_name='atividades')
+
+    class Meta:
+        unique_together = ('atividade', 'area_tematica')
+        verbose_name = 'Área Temática da Atividade'
+        verbose_name_plural = 'Áreas Temáticas das Atividades'
+
+    def __str__(self):
+        return f"{self.atividade.codigo} — {self.area_tematica.nome}"
+
+
+class AtividadeOILocal(models.Model):
+    atividade = models.ForeignKey(Atividade, on_delete=models.CASCADE, related_name='ois_locais')
+    oilocal = models.ForeignKey(OIsLocal, on_delete=models.CASCADE, related_name='atividades')
+
+    class Meta:
+        unique_together = ('atividade', 'oilocal')
+        verbose_name = 'OI Local da Atividade'
+        verbose_name_plural = 'OIs Locais das Atividades'
+
+    def __str__(self):
+        return f"{self.atividade.codigo} — {self.oilocal.nome}"
+
+
+class AtividadeOIRegional(models.Model):
+    atividade = models.ForeignKey(Atividade, on_delete=models.CASCADE, related_name='ois_regionais')
+    oiregional = models.ForeignKey(OIsRegional, on_delete=models.CASCADE, related_name='atividades')
+
+    class Meta:
+        unique_together = ('atividade', 'oiregional')
+        verbose_name = 'OI Regional da Atividade'
+        verbose_name_plural = 'OIs Regionais das Atividades'
+
+    def __str__(self):
+        return f"{self.atividade.codigo} — {self.oiregional.ois_reg}"
+
+
+class AtividadeTI(models.Model):
+    atividade = models.ForeignKey(Atividade, on_delete=models.CASCADE, related_name='tis')
+    ti = models.ForeignKey(TIs, on_delete=models.CASCADE, related_name='atividades')
+
+    class Meta:
+        unique_together = ('atividade', 'ti')
+        verbose_name = 'Terra Indígena da Atividade'
+        verbose_name_plural = 'Terras Indígenas das Atividades'
+
+    def __str__(self):
+        return f"{self.atividade.codigo} — {self.ti.nome}"
+
+
 # GESTÃO DE PROJETOS - INDICADORES/METAS/REGISTROS
 
 class Indicador(models.Model):
+    TIPO_CHOICES = [
+        ('area_restrito', 'Área Restrita'),
+        ('area_direto', 'Área Direta'),
+        ('area_geral', 'Área Geral'),
+        ('treinados', 'Pessoas Treinadas'),
+        ('leis_politicas', 'Leis e Políticas'),
+        ('capacitados', 'Organizações Capacitadas'),
+        ('aplicacao', 'Aplicação'),
+        ('planos', 'Planos'),
+        ('parcerias', 'Parcerias'),
+        ('mobilizados', 'Recursos Mobilizados'),
+        ('produtos', 'Produtos'),
+        ('contratos', 'Contratos'),
+    ]
+
     nome = models.CharField(max_length=255)
     codigo = models.CharField(max_length=255)
     descricao = models.CharField(max_length=255)
     reporte = models.CharField(max_length=255)
+    tipo = models.CharField(max_length=30, choices=TIPO_CHOICES)
 
     def __str__(self):
         return self.nome
