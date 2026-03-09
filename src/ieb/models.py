@@ -364,6 +364,39 @@ class AtividadeRegistro(models.Model):
         return f"{self.data_inicio} - {self.projeto.nome}/COMP-{self.componente.codigo}/ATIV-{self.atividade.codigo} - {self.atividade.nome}"
 
 
+class AtividadeRegistroFoto(models.Model):
+    atividade_registro = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE, related_name='fotos_set')
+    foto = models.ImageField(upload_to='fotos/', max_length=255)
+    foto_thumbnail = models.ImageField(upload_to='fotos/thumbnails/', blank=True, editable=False, max_length=255)
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if self.foto:
+            img_path = self.foto.path
+            with Image.open(img_path) as img:
+                if img.mode == 'RGBA':
+                    img = img.convert('RGB')
+                img.thumbnail((300, 300))
+                thumbnail_dir = os.path.join(os.path.dirname(img_path), 'thumbnails')
+                if not os.path.exists(thumbnail_dir):
+                    os.makedirs(thumbnail_dir)
+                thumbnail_path = os.path.join(thumbnail_dir, os.path.basename(img_path))
+                img.save(thumbnail_path, format='JPEG', quality=85)
+                self.foto_thumbnail.name = os.path.join('fotos/thumbnails/', os.path.basename(img_path))
+            super().save(update_fields=['foto_thumbnail'])
+
+    def __str__(self):
+        return f"Foto - {self.atividade_registro}"
+
+
+class AtividadeRegistroListaPresenca(models.Model):
+    atividade_registro = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE, related_name='listas_presenca_set')
+    arquivo = models.FileField(upload_to='listas_presenca/', max_length=255)
+
+    def __str__(self):
+        return f"Lista de presença - {self.atividade_registro}"
+
+
 class AtividadeRegistroEquipe(models.Model):
     equipe_projeto = models.ForeignKey(EquipeProjeto, on_delete=models.CASCADE)
     atividade_registro = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE, default=1)

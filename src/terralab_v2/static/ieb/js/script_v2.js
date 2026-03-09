@@ -326,4 +326,25 @@ document.addEventListener('DOMContentLoaded', function () {
         field.addEventListener('change', () => field.value.trim() ? markValid(field) : markInvalid(field));
     });
 
+    // ----------------------------------------------------------------
+    // Feedback visual nos campos de upload de arquivo
+    // ----------------------------------------------------------------
+    document.querySelectorAll('.file-upload-area input[type="file"]').forEach(input => {
+        input.addEventListener('change', function () {
+            const label = this.closest('.file-upload-area').querySelector('.file-label');
+            if (this.files && this.files.length > 0) {
+                label.textContent = this.files.length === 1
+                    ? this.files[0].name
+                    : `${this.files.length} arquivos selecionados`;
+                label.style.color = '#d26b16';
+            } else {
+                label.textContent = label.dataset.default;
+                label.style.color = '';
+            }
+        });
+        // Guarda o texto original para restaurar se necessário
+        const label = input.closest('.file-upload-area').querySelector('.file-label');
+        if (label) label.dataset.default = label.textContent;
+    });
+
 });

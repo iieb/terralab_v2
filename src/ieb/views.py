@@ -5,7 +5,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.contrib import messages
 from .forms import AtividadeRegistroForm
-from .models import Projeto, Componente, Atividade, EquipeProjeto, Indicador, Meta, AtividadeRegistro, Treinados, Leis, Planos, Capacitados, Organizacao, Parceria, Parcerias, Plano, PlanoHistorico, TIs, AreaDireto, AreaGeral, AreaRestrito, Produtos, Produto, Contrato, Contratos, Lei, LeiHistorico, Aplicacao, Mobilizados, Modelo, AtividadeRegistroModelo
+from .models import Projeto, Componente, Atividade, EquipeProjeto, Indicador, Meta, AtividadeRegistro, AtividadeRegistroFoto, AtividadeRegistroListaPresenca, Treinados, Leis, Planos, Capacitados, Organizacao, Parceria, Parcerias, Plano, PlanoHistorico, TIs, AreaDireto, AreaGeral, AreaRestrito, Produtos, Produto, Contrato, Contratos, Lei, LeiHistorico, Aplicacao, Mobilizados, Modelo, AtividadeRegistroModelo
 from django.views.decorators.csrf import csrf_exempt
 import unicodedata
 import re
@@ -822,6 +822,11 @@ def _atividade_registro_process(request, template='atividade_registro_form.html'
         if form.is_valid():
             atividade_registro = form.save()
 
+            for foto in request.FILES.getlist('fotos'):
+                AtividadeRegistroFoto.objects.create(atividade_registro=atividade_registro, foto=foto)
+            for lista in request.FILES.getlist('lista_presenca'):
+                AtividadeRegistroListaPresenca.objects.create(atividade_registro=atividade_registro, arquivo=lista)
+
             treinados_data = {'total_pessoas': None, 'homens': None, 'mulheres': None, 'jovens': None, 'foco_treinamento': None}
             planos_data = {'nome': '', 'tipo': '', 'situacao': ''}
             capacitados_data = {'organizacoes': [], 'total_organizacoes': 0, 'foco_capacitacao': None}
@@ -1014,8 +1019,7 @@ def _atividade_registro_process(request, template='atividade_registro_form.html'
             messages.success(request, 'Registro de atividade salvo com sucesso!')
             return redirect('atividade_registro_detalhe', pk=atividade_registro.pk)
         else:
-            messages.error(request, 'Erro ao salvar o registro de atividade. Verifique os campos e tente novamente.')
-            print(form.errors)
+            messages.error(request, f'Erro ao salvar: {form.errors.as_text()}')
     else:
         form = AtividadeRegistroForm()
 

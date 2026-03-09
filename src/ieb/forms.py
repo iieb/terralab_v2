@@ -20,8 +20,8 @@ class AtividadeRegistroForm(forms.ModelForm):
         fields = [
             'projeto', 'componente', 'atividade', 'subatividade', 'equipe_projeto',
             'data_inicio', 'data_final', 'desafios', 'propostas',
-            'sucesso', 'melhores_praticas', 'fotos', 'equipe_adicional',
-            'descricao', 'local', 'comentarios', 'lista_presenca',
+            'sucesso', 'melhores_praticas', 'equipe_adicional',
+            'descricao', 'local', 'comentarios',
             'email_organizacao'
         ]
         widgets = {
@@ -60,7 +60,6 @@ class AtividadeRegistroForm(forms.ModelForm):
         self.fields['data_final'].required = True
         self.fields['descricao'].required = True
         self.fields['local'].required = True
-        self.fields['fotos'].required = False
 
         self.fields['descricao'].widget.attrs.update({
         'placeholder': 'Descreva a atividade realizada'

@@ -151,19 +151,17 @@
                             <label for="id_fotos">Fotos</label>
                             <div class="file-upload-area" id="fotos-upload-area">
                                 <span class="file-icon">&#128247;</span>
-                                <span class="file-label">Clique ou arraste uma foto aqui</span>
-                                {{ form.fotos }}
+                                <span class="file-label">Clique ou arraste fotos aqui</span>
+                                <input type="file" id="id_fotos" name="fotos" accept="image/*" multiple>
                             </div>
-                            {{ form.fotos.errors }}
                         </div>
                         <div class="field-group">
                             <label for="id_lista_presenca">Lista de presença</label>
                             <div class="file-upload-area" id="lista-upload-area">
                                 <span class="file-icon">&#128203;</span>
-                                <span class="file-label">Clique ou arraste a lista aqui</span>
-                                {{ form.lista_presenca }}
+                                <span class="file-label">Clique ou arraste arquivos aqui</span>
+                                <input type="file" id="id_lista_presenca" name="lista_presenca" multiple>
                             </div>
-                            {{ form.lista_presenca.errors }}
                         </div>
                     </div>
 
