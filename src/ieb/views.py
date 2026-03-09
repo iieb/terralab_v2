@@ -783,8 +783,22 @@ def enviar_email_notificacao(atividade_registro_id, email_organizacao):
         connection=backend
     )
 
+    # Montar nome do PDF
+    def _slug(text):
+        text = unicodedata.normalize('NFKD', str(text)).encode('ascii', 'ignore').decode('ascii')
+        text = re.sub(r'[^\w]', '_', text)
+        return re.sub(r'_+', '_', text).strip('_')
+
+    ar = atividade_registro
+    partes = [_slug(ar.projeto.nome_fant), _slug(ar.atividade.codigo)]
+    if ar.subatividade:
+        partes.append(_slug(ar.subatividade.codigo))
+    partes.append(ar.data_inicio.strftime('%Y%m%d'))
+    partes.append(_slug(ar.equipe_projeto.equipe.nome))
+    pdf_filename = '_'.join(partes) + '.pdf'
+
     # Anexar o PDF ao e-mail
-    email.attach('relatorio_atividade.pdf', pdf_content, 'application/pdf')
+    email.attach(pdf_filename, pdf_content, 'application/pdf')
 
     # Enviar o e-mail
     email.send()
