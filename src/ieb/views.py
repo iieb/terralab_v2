@@ -715,36 +715,25 @@ def gerar_pdf(template_src, context_dict):
     return None
 
 def enviar_email_notificacao(atividade_registro_id, email_organizacao):
-    # Buscar o registro de atividade novamente com as relações pré-carregadas
     atividade_registro = AtividadeRegistro.objects.get(id=atividade_registro_id)
 
-    # Obter os indicadores associados manualmente
-    parcerias = Parcerias.objects.filter(atividade_registro=atividade_registro)
-    treinados = Treinados.objects.filter(atividade_registro=atividade_registro).first()
-    capacitados = Capacitados.objects.filter(atividade_registro=atividade_registro).first()
-    area_restrito = AreaRestrito.objects.filter(atividade_registro=atividade_registro).first()
-    area_direto = AreaDireto.objects.filter(atividade_registro=atividade_registro).first()
-    area_geral = AreaGeral.objects.filter(atividade_registro=atividade_registro).first()
-    produtos = Produtos.objects.filter(atividade_registro=atividade_registro).first()
-    contratos = Contratos.objects.filter(atividade_registro=atividade_registro).first()
-    leis = Leis.objects.filter(atividade_registro=atividade_registro).first()
-    aplicacao = Aplicacao.objects.filter(atividade_registro=atividade_registro).first()
-    mobilizados = Mobilizados.objects.filter(atividade_registro=atividade_registro).first()
-
-    # Criar o contexto do PDF
     pdf_context = {
         'atividade_registro': atividade_registro,
-        'parcerias': parcerias,
-        'treinados': treinados,
-        'capacitados': capacitados,
-        'area_restrito': area_restrito,
-        'area_direto': area_direto,
-        'area_geral': area_geral,
-        'produtos': produtos,
-        'contratos': contratos,
-        'leis': leis,
-        'aplicacao': aplicacao,
-        'mobilizados': mobilizados,
+        'fotos': atividade_registro.fotos_set.all(),
+        'listas_presenca': atividade_registro.listas_presenca_set.all(),
+        'treinados': Treinados.objects.filter(atividade_registro=atividade_registro).first(),
+        'capacitados': Capacitados.objects.filter(atividade_registro=atividade_registro).first(),
+        'parcerias': Parcerias.objects.filter(atividade_registro=atividade_registro).first(),
+        'planos': Planos.objects.filter(atividade_registro=atividade_registro).first(),
+        'area_restrito': AreaRestrito.objects.filter(atividade_registro=atividade_registro).first(),
+        'area_direto': AreaDireto.objects.filter(atividade_registro=atividade_registro).first(),
+        'area_geral': AreaGeral.objects.filter(atividade_registro=atividade_registro).first(),
+        'produtos': Produtos.objects.filter(atividade_registro=atividade_registro).first(),
+        'contratos': Contratos.objects.filter(atividade_registro=atividade_registro).first(),
+        'leis': Leis.objects.filter(atividade_registro=atividade_registro).first(),
+        'aplicacao': Aplicacao.objects.filter(atividade_registro=atividade_registro).first(),
+        'mobilizados': Mobilizados.objects.filter(atividade_registro=atividade_registro).first(),
+        'modelos': AtividadeRegistroModelo.objects.filter(atividade_registro=atividade_registro).select_related('modelo'),
     }
 
     pdf_content = gerar_pdf('atividade_registro_pdf.html', pdf_context)

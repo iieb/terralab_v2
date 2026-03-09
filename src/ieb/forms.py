@@ -32,7 +32,7 @@ class AtividadeRegistroForm(forms.ModelForm):
             'propostas': forms.Textarea(attrs={'maxlength': 255}),
             'sucesso': forms.Textarea(attrs={'maxlength': 255}),
             'melhores_praticas': forms.Textarea(attrs={'maxlength': 255}),
-            'descricao': forms.Textarea(attrs={'maxlength': 255}),
+            'descricao': forms.Textarea(),
             'comentarios': forms.Textarea(attrs={'maxlength': 255}),
             'local': forms.Textarea(attrs={'maxlength': 255}),
         }
