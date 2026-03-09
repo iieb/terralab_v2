@@ -1,5 +1,5 @@
 from django import forms
-from .models import AtividadeRegistro, Meta, Indicador, Projeto
+from .models import AtividadeRegistro, Meta, Indicador, Projeto, Subatividade
 
 class AtividadeRegistroForm(forms.ModelForm):
     indicadores = forms.ModelMultipleChoiceField(
@@ -18,7 +18,7 @@ class AtividadeRegistroForm(forms.ModelForm):
     class Meta:
         model = AtividadeRegistro
         fields = [
-            'projeto', 'componente', 'atividade', 'equipe_projeto',
+            'projeto', 'componente', 'atividade', 'subatividade', 'equipe_projeto',
             'data_inicio', 'data_final', 'desafios', 'propostas',
             'sucesso', 'melhores_praticas', 'fotos', 'equipe_adicional',
             'descricao', 'local', 'comentarios', 'lista_presenca',
@@ -44,6 +44,17 @@ class AtividadeRegistroForm(forms.ModelForm):
         self.fields['projeto'].widget = forms.Select()
         self.fields['componente'].required = True
         self.fields['atividade'].required = True
+        self.fields['subatividade'].required = False
+        if 'atividade' in self.data:
+            try:
+                atividade_id = int(self.data.get('atividade'))
+                self.fields['subatividade'].queryset = Subatividade.objects.filter(atividade_id=atividade_id)
+            except (ValueError, TypeError):
+                self.fields['subatividade'].queryset = Subatividade.objects.none()
+        elif self.instance.pk and self.instance.atividade_id:
+            self.fields['subatividade'].queryset = Subatividade.objects.filter(atividade_id=self.instance.atividade_id)
+        else:
+            self.fields['subatividade'].queryset = Subatividade.objects.none()
         self.fields['equipe_projeto'].required = True
         self.fields['data_inicio'].required = True
         self.fields['data_final'].required = True

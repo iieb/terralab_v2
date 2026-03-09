@@ -26,6 +26,11 @@ class ComponenteInline(admin.TabularInline):
     extra = 1
 
 
+class SubatividadeInline(admin.TabularInline):
+    model = Subatividade
+    extra = 1
+
+
 class MetaInline(admin.TabularInline):
     model = Meta
     extra = 1
@@ -62,7 +67,14 @@ class ProjetoAdmin(admin.ModelAdmin):
 
 @admin.register(Atividade)
 class AtividadeAdmin(admin.ModelAdmin):
-    inlines = [MetaInline, AtividadeAreaTematicaInline, AtividadeOILocalInline, AtividadeOIRegionalInline, AtividadeTIInline]
+    inlines = [SubatividadeInline, MetaInline, AtividadeAreaTematicaInline, AtividadeOILocalInline, AtividadeOIRegionalInline, AtividadeTIInline]
+
+
+@admin.register(Subatividade)
+class SubatividadeAdmin(admin.ModelAdmin):
+    list_display = ('codigo', 'nome', 'atividade')
+    list_filter = ('atividade__componente__projeto',)
+    search_fields = ('nome', 'codigo')
 
 
 @admin.register(AreaTematica)

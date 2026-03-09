@@ -441,6 +441,13 @@ def load_atividades(request):
     atividade_data = [{'id': atividade.id, 'nome': str(atividade)} for atividade in atividades]
     return JsonResponse(atividade_data, safe=False)
 
+def load_subatividades(request):
+    atividade_id = request.GET.get('atividade')
+    from .models import Subatividade
+    subatividades = Subatividade.objects.filter(atividade_id=atividade_id)
+    data = [{'id': s.id, 'nome': str(s)} for s in subatividades]
+    return JsonResponse(data, safe=False)
+
 def load_equipes(request):
     projeto_id = request.GET.get('projeto')
     equipes = EquipeProjeto.objects.filter(projeto_id=projeto_id).all()

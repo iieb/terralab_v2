@@ -86,6 +86,14 @@
                         </div>
                     </div>
 
+                    <div class="field-group" id="subatividade-group" style="display:none;">
+                        <label for="id_subatividade">Subatividade</label>
+                        <select id="id_subatividade" name="subatividade">
+                            <option value="">Selecione uma subatividade</option>
+                        </select>
+                        {{ form.subatividade.errors }}
+                    </div>
+
                     <div class="field-group">
                         <label for="id_equipe_projeto">Responsável pelo preenchimento <span class="required">*</span></label>
                         <select id="id_equipe_projeto" name="equipe_projeto" required disabled>
@@ -249,6 +257,7 @@
      data-url-equipes-adicionais="{% url 'load_equipes_adicionais' %}"
      data-url-atividades="{% url 'load_atividades' %}"
      data-url-indicadores="{% url 'load_indicadores' %}"
+     data-url-subatividades="{% url 'load_subatividades' %}"
      data-url-adicionar-parceria="{% url 'adicionar_parceria' %}"
      data-url-atualizar-situacao-plano="{% url 'atualizar_situacao_plano' %}"
      data-url-adicionar-plano="{% url 'adicionar_plano' %}"></div>

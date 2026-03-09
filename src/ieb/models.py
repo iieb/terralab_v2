@@ -204,6 +204,16 @@ class AreaTematica(models.Model):
         return self.nome
 
 
+class Subatividade(models.Model):
+    nome = models.CharField(max_length=255)
+    codigo = models.CharField(max_length=255)
+    descricao = models.CharField(max_length=255)
+    atividade = models.ForeignKey(Atividade, on_delete=models.CASCADE, related_name='subatividades')
+
+    def __str__(self):
+        return f"Subatividade {self.codigo}: {self.nome}"
+
+
 class AtividadeAreaTematica(models.Model):
     atividade = models.ForeignKey(Atividade, on_delete=models.CASCADE, related_name='areas_tematicas')
     area_tematica = models.ForeignKey(AreaTematica, on_delete=models.CASCADE, related_name='atividades')
@@ -300,6 +310,7 @@ class AtividadeRegistro(models.Model):
     projeto = models.ForeignKey(Projeto, on_delete=models.CASCADE)
     componente = models.ForeignKey(Componente, on_delete=models.CASCADE)
     atividade = models.ForeignKey(Atividade, on_delete=models.CASCADE)
+    subatividade = models.ForeignKey(Subatividade, on_delete=models.SET_NULL, null=True, blank=True)
     equipe_projeto = models.ForeignKey(EquipeProjeto, on_delete=models.CASCADE)
     equipe_adicional = models.ManyToManyField(EquipeProjeto, related_name='atividades_registradas', blank=True)
     data_inicio = models.DateField()

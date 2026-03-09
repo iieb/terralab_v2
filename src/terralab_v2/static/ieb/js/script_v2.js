@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const urlEquipesAdicionais = urlContainer.dataset.urlEquipesAdicionais;
     const urlAtividades        = urlContainer.dataset.urlAtividades;
     const urlIndicadores       = urlContainer.dataset.urlIndicadores;
+    const urlSubatividades     = urlContainer.dataset.urlSubatividades;
 
     // ----------------------------------------------------------------
     // Stepper
@@ -85,6 +86,8 @@ document.addEventListener('DOMContentLoaded', function () {
         resetSelect(ativSelect,   'Selecione uma atividade', true);
         resetSelect(equipeSelect, 'Selecione', true);
         document.getElementById('indicadores').innerHTML = '';
+        resetSelect(document.getElementById('id_subatividade'), 'Selecione uma subatividade');
+        document.getElementById('subatividade-group').style.display = 'none';
 
         if (!projetoId) return;
 
@@ -126,6 +129,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const ativSelect = document.getElementById('id_atividade');
         resetSelect(ativSelect, 'Selecione uma atividade', true);
         document.getElementById('indicadores').innerHTML = '';
+        resetSelect(document.getElementById('id_subatividade'), 'Selecione uma subatividade');
+        document.getElementById('subatividade-group').style.display = 'none';
 
         if (!compId) return;
 
@@ -139,15 +144,33 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // ----------------------------------------------------------------
-    // Cascata: Atividade → Indicadores
+    // Cascata: Atividade → Subatividades + Indicadores
     // ----------------------------------------------------------------
     document.getElementById('id_atividade').addEventListener('change', function () {
         const atividadeId = this.value;
+
+        // — Subatividades —
+        const subatividadeGroup = document.getElementById('subatividade-group');
+        const subatividadeSelect = document.getElementById('id_subatividade');
+        resetSelect(subatividadeSelect, 'Selecione uma subatividade');
+        subatividadeGroup.style.display = 'none';
+
+        // — Indicadores —
         const container = document.getElementById('indicadores');
         const hint = document.getElementById('indicadores-hint');
         container.innerHTML = '';
 
         if (!atividadeId) return;
+
+        fetch(`${urlSubatividades}?atividade=${atividadeId}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.length > 0) {
+                    populateSelect(subatividadeSelect, data);
+                    subatividadeGroup.style.display = '';
+                }
+            })
+            .catch(err => console.error('Erro ao carregar subatividades:', err));
 
         fetch(`${urlIndicadores}?atividade=${atividadeId}`)
             .then(r => r.json())
@@ -160,7 +183,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 hint.style.display = 'none';
 
                 data.forEach(item => {
-                    // Usa item.tipo diretamente — sem normalização de string
                     const config = indicadoresConfig[item.tipo];
                     if (!config) {
                         console.warn(`Tipo de indicador sem configuração: "${item.tipo}"`);
