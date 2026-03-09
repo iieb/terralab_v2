@@ -1,183 +1,358 @@
+{% load static %}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Detalhes da Atividade</title>
-    {% load static %}
+    <title>Registro — {{ atividade_registro.atividade.nome }}</title>
     <link rel="stylesheet" href="{% static 'ieb/css/detalhe.css' %}">
-    <link rel="stylesheet" href="{% static 'ieb/css/lightbox.css' %}">
-    <link rel="stylesheet" href="{% static 'ieb/css/indicadores.css' %}">
 </head>
 <body>
-    <div class="container">
-        <h1>Detalhes da Atividade</h1>
 
-        <label>Projeto:</label>
-        <div class="field-value">{{ atividade_registro.projeto.nome }}</div>
+<div class="page-wrapper">
 
-        <label>Componente:</label>
-        <div class="field-value">{{ atividade_registro.componente.nome }}</div>
-
-        <label>Atividade:</label>
-        <div class="field-value">{{ atividade_registro.atividade.nome }}</div>
-
-        <label>Equipe Responsável:</label>
-        <div class="field-value">{{ atividade_registro.equipe_projeto.equipe.nome }}</div>
-
-        <label>Data Início:</label>
-        <div class="field-value">{{ atividade_registro.data_inicio }}</div>
-
-        <label>Data Final:</label>
-        <div class="field-value">{{ atividade_registro.data_final }}</div>
-
-        <label>Descrição:</label>
-        <div class="field-value">{{ atividade_registro.descricao }}</div>
-
-        <label>Local:</label>
-        <div class="field-value">{{ atividade_registro.local }}</div>
-
-
-        <label>Fotos:</label>
-        <div class="field-value">
-            {% if atividade_registro.fotos_thumbnail %}
-                <img id="thumbnail" src="{{ atividade_registro.fotos_thumbnail.url }}" alt="Fotos Miniatura" style="cursor: pointer;">
-            {% elif atividade_registro.fotos %}
-                <img id="thumbnail" src="{{ atividade_registro.fotos.url }}" alt="Fotos Original" style="max-width: 300px; height: auto; cursor: pointer;">
-            {% else %}
-                <p>Nenhuma foto disponível.</p>
+    <!-- ── CABEÇALHO ─────────────────────────────────────────────── -->
+    <header class="detail-header">
+        <div class="breadcrumb">
+            {{ atividade_registro.projeto.nome }}
+            <span class="sep">›</span>
+            {{ atividade_registro.componente.nome }}
+            <span class="sep">›</span>
+            {{ atividade_registro.atividade.nome }}
+            {% if atividade_registro.subatividade %}
+                <span class="sep">›</span>
+                {{ atividade_registro.subatividade.nome }}
             {% endif %}
         </div>
-
-        <!-- Lightbox para visualização ampliada -->
-        <div id="lightbox" class="lightbox">
-            <span class="close" id="close-lightbox">&times;</span>
-            <img id="lightbox-img" src="" alt="Visualização Ampliada">
+        <h1>{{ atividade_registro.atividade.nome }}</h1>
+        <div class="meta-chips">
+            <span class="chip chip-date">&#128197; {{ atividade_registro.data_inicio|date:"d/m/Y" }} → {{ atividade_registro.data_final|date:"d/m/Y" }}</span>
+            <span class="chip chip-team">&#128101; {{ atividade_registro.equipe_projeto.equipe.nome }}</span>
+            <span class="chip chip-place">&#128205; {{ atividade_registro.local }}</span>
         </div>
+    </header>
 
-        <label>Lista de Presença:</label>
-        <div class="field-value">{{ atividade_registro.lista_presenca }}</div>
+    <!-- ── DESCRIÇÃO ─────────────────────────────────────────────── -->
+    <section class="card">
+        <div class="card-header">
+            <span class="card-icon">&#128221;</span>
+            <h2>Descrição</h2>
+        </div>
+        <div class="card-body">
+            <p class="description-text">{{ atividade_registro.descricao }}</p>
+        </div>
+    </section>
 
-        <h2>Indicadores Registrados</h2>
+    <!-- ── FOTOS ─────────────────────────────────────────────────── -->
+    {% if fotos %}
+    <section class="card">
+        <div class="card-header">
+            <span class="card-icon">&#128247;</span>
+            <h2>Fotos <span class="count-badge">{{ fotos|length }}</span></h2>
+        </div>
+        <div class="card-body">
+            <div class="photo-grid">
+                {% for foto in fotos %}
+                <div class="photo-thumb" onclick="openLightbox('{{ foto.foto.url }}')">
+                    {% if foto.foto_thumbnail %}
+                        <img src="{{ foto.foto_thumbnail.url }}" alt="Foto {{ forloop.counter }}">
+                    {% else %}
+                        <img src="{{ foto.foto.url }}" alt="Foto {{ forloop.counter }}">
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+    {% endif %}
 
-        {% if parcerias %}
-            <div class="indicator-section">
-                <h3>Parcerias</h3>
-                <ul>
-                    {% for parceria in parcerias.parcerias.all %}
-                        <li>{{ parceria.nome }} - {{ parceria.tipo }}</li>
+    <!-- ── LISTAS DE PRESENÇA ─────────────────────────────────────── -->
+    {% if listas_presenca %}
+    <section class="card">
+        <div class="card-header">
+            <span class="card-icon">&#128203;</span>
+            <h2>Listas de Presença <span class="count-badge">{{ listas_presenca|length }}</span></h2>
+        </div>
+        <div class="card-body">
+            <ul class="file-list">
+                {% for lista in listas_presenca %}
+                <li>
+                    <a href="{{ lista.arquivo.url }}" target="_blank" class="file-link">
+                        <span class="file-icon-sm">&#128196;</span>
+                        {{ lista.arquivo.name|slice:"16:" }}
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- ── NARRATIVA ─────────────────────────────────────────────── -->
+    {% if atividade_registro.desafios or atividade_registro.propostas or atividade_registro.sucesso or atividade_registro.melhores_praticas or atividade_registro.comentarios %}
+    <section class="card">
+        <div class="card-header">
+            <span class="card-icon">&#128172;</span>
+            <h2>Narrativa</h2>
+        </div>
+        <div class="card-body narrative-grid">
+            {% if atividade_registro.desafios %}
+            <div class="narrative-item">
+                <div class="narrative-label">Desafios</div>
+                <p>{{ atividade_registro.desafios }}</p>
+            </div>
+            {% endif %}
+            {% if atividade_registro.propostas %}
+            <div class="narrative-item">
+                <div class="narrative-label">Propostas</div>
+                <p>{{ atividade_registro.propostas }}</p>
+            </div>
+            {% endif %}
+            {% if atividade_registro.sucesso %}
+            <div class="narrative-item">
+                <div class="narrative-label">História de Sucesso</div>
+                <p>{{ atividade_registro.sucesso }}</p>
+            </div>
+            {% endif %}
+            {% if atividade_registro.melhores_praticas %}
+            <div class="narrative-item">
+                <div class="narrative-label">Melhores Práticas</div>
+                <p>{{ atividade_registro.melhores_praticas }}</p>
+            </div>
+            {% endif %}
+            {% if atividade_registro.comentarios %}
+            <div class="narrative-item">
+                <div class="narrative-label">Comentários</div>
+                <p>{{ atividade_registro.comentarios }}</p>
+            </div>
+            {% endif %}
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- ── EQUIPE ADICIONAL ──────────────────────────────────────── -->
+    {% if atividade_registro.equipe_adicional.exists %}
+    <section class="card">
+        <div class="card-header">
+            <span class="card-icon">&#128100;</span>
+            <h2>Equipe Adicional</h2>
+        </div>
+        <div class="card-body">
+            <ul class="tag-list">
+                {% for eq in atividade_registro.equipe_adicional.all %}
+                <li class="tag">{{ eq.equipe.nome }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- ── INDICADORES ───────────────────────────────────────────── -->
+    {% if treinados or capacitados or parcerias or planos or area_geral or area_direto or area_restrito or produtos or contratos or leis or aplicacao or mobilizados or modelos %}
+    <section class="card">
+        <div class="card-header">
+            <span class="card-icon">&#128200;</span>
+            <h2>Indicadores Registrados</h2>
+        </div>
+        <div class="card-body indicators-grid">
+
+            {% if treinados %}
+            <div class="indicator-card">
+                <div class="indicator-title">&#128104;&#8205;&#127979; Pessoas Treinadas</div>
+                <div class="stat-row">
+                    <div class="stat"><span class="stat-value">{{ treinados.total_pessoas }}</span><span class="stat-label">Total</span></div>
+                    <div class="stat"><span class="stat-value">{{ treinados.homens }}</span><span class="stat-label">Homens</span></div>
+                    <div class="stat"><span class="stat-value">{{ treinados.mulheres }}</span><span class="stat-label">Mulheres</span></div>
+                    <div class="stat"><span class="stat-value">{{ treinados.jovens }}</span><span class="stat-label">Jovens</span></div>
+                </div>
+                <div class="indicator-meta">Foco: {{ treinados.get_foco_treinamento_display }}</div>
+            </div>
+            {% endif %}
+
+            {% if capacitados %}
+            <div class="indicator-card">
+                <div class="indicator-title">&#127979; Capacitados</div>
+                <div class="stat-row">
+                    <div class="stat"><span class="stat-value">{{ capacitados.total_organizacoes }}</span><span class="stat-label">Organizações</span></div>
+                </div>
+                <div class="indicator-meta">Foco: {{ capacitados.get_foco_capacitacao_display }}</div>
+                {% if capacitados.organizacoes.exists %}
+                <ul class="tag-list mt-8">
+                    {% for org in capacitados.organizacoes.all %}
+                    <li class="tag">{{ org.nome }}</li>
                     {% endfor %}
                 </ul>
+                {% endif %}
             </div>
-        {% endif %}
+            {% endif %}
 
-        {% if treinados %}
-            <div class="indicator-section">
-                <h3>Pessoas Treinadas</h3>
-                <p>Total: {{ treinados.total_pessoas }}</p>
-                <p>Homens: {{ treinados.homens }}</p>
-                <p>Mulheres: {{ treinados.mulheres }}</p>
-                <p>Jovens: {{ treinados.jovens }}</p>
-                <p>Foco do Treinamento: {{ treinados.get_foco_treinamento_display }}</p>
+            {% if aplicacao %}
+            <div class="indicator-card">
+                <div class="indicator-title">&#9989; Aplicação</div>
+                <div class="stat-row">
+                    <div class="stat"><span class="stat-value">{{ aplicacao.total_pessoas }}</span><span class="stat-label">Total</span></div>
+                    <div class="stat"><span class="stat-value">{{ aplicacao.homens }}</span><span class="stat-label">Homens</span></div>
+                    <div class="stat"><span class="stat-value">{{ aplicacao.mulheres }}</span><span class="stat-label">Mulheres</span></div>
+                    <div class="stat"><span class="stat-value">{{ aplicacao.jovens }}</span><span class="stat-label">Jovens</span></div>
+                </div>
             </div>
-        {% endif %}
+            {% endif %}
 
-        {% if capacitados %}
-            <div class="indicator-section">
-                <h3>Capacitados</h3>
-                <p>Total de Organizações: {{ capacitados.total_organizacoes }}</p>
-                <p>Foco da Capacitação: {{ capacitados.get_foco_capacitacao_display }}</p>
-                <ul>
-                    {% for organizacao in capacitados.organizacoes.all %}
-                        <li>{{ organizacao.nome }}</li>
+            {% if parcerias %}
+            <div class="indicator-card">
+                <div class="indicator-title">&#129309; Parcerias</div>
+                <div class="stat-row">
+                    <div class="stat"><span class="stat-value">{{ parcerias.total_parcerias }}</span><span class="stat-label">Total</span></div>
+                </div>
+                {% if parcerias.parcerias.exists %}
+                <ul class="tag-list mt-8">
+                    {% for p in parcerias.parcerias.all %}
+                    <li class="tag">{{ p.nome }}</li>
                     {% endfor %}
                 </ul>
+                {% endif %}
             </div>
-        {% endif %}
+            {% endif %}
 
-        {% if area_restrito %}
-            <div class="indicator-section">
-                <h3>Área Restrita</h3>
-                <p>TI: {{ area_restrito.ti.nome }}</p>
-                <p>Área em hectares: {{ area_restrito.area_em_ha }}</p>
-            </div>
-        {% endif %}
-
-        {% if area_direto %}
-            <div class="indicator-section">
-                <h3>Área Direto</h3>
-                <p>Total de TIs: {{ area_direto.total_tis }}</p>
-                <p>Total de Área (ha): {{ area_direto.total_area }}</p>
-            </div>
-        {% endif %}
-
-        {% if area_geral %}
-            <div class="indicator-section">
-                <h3>Área Geral</h3>
-                <p>Total de TIs: {{ area_geral.total_tis }}</p>
-                <p>Total de Área (ha): {{ area_geral.total_area }}</p>
-            </div>
-        {% endif %}
-
-        {% if produtos %}
-            <div class="indicator-section">
-                <h3>Produtos</h3>
-                <ul>
-                    {% for produto in produtos.produtos.all %}
-                        <li>{{ produto.nome }}</li>
+            {% if planos %}
+            <div class="indicator-card">
+                <div class="indicator-title">&#128196; Planos</div>
+                <div class="stat-row">
+                    <div class="stat"><span class="stat-value">{{ planos.total_planos }}</span><span class="stat-label">Total</span></div>
+                </div>
+                {% if planos.planos.exists %}
+                <ul class="item-list mt-8">
+                    {% for p in planos.planos.all %}
+                    <li>{{ p.nome }} — <em>{{ p.situacao }}</em></li>
                     {% endfor %}
                 </ul>
+                {% endif %}
             </div>
-        {% endif %}
+            {% endif %}
 
-        {% if contratos %}
-            <div class="indicator-section">
-                <h3>Contratos</h3>
-                <ul>
-                    {% for contrato in contratos.contratos.all %}
-                        <li>{{ contrato.nome }} - {{ contrato.get_estado_display }}</li>
+            {% if area_geral %}
+            <div class="indicator-card">
+                <div class="indicator-title">&#127758; Área de Influência Geral</div>
+                <div class="stat-row">
+                    <div class="stat"><span class="stat-value">{{ area_geral.total_tis }}</span><span class="stat-label">TIs</span></div>
+                    <div class="stat"><span class="stat-value">{{ area_geral.total_area|floatformat:0 }}</span><span class="stat-label">ha</span></div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if area_direto %}
+            <div class="indicator-card">
+                <div class="indicator-title">&#127759; Área de Influência Direta</div>
+                <div class="stat-row">
+                    <div class="stat"><span class="stat-value">{{ area_direto.total_tis }}</span><span class="stat-label">TIs</span></div>
+                    <div class="stat"><span class="stat-value">{{ area_direto.total_area|floatformat:0 }}</span><span class="stat-label">ha</span></div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if area_restrito %}
+            <div class="indicator-card">
+                <div class="indicator-title">&#128683; Área Restrita</div>
+                <div class="stat-row">
+                    <div class="stat"><span class="stat-value">{{ area_restrito.area_em_ha|floatformat:0 }}</span><span class="stat-label">ha</span></div>
+                </div>
+                <div class="indicator-meta">TI: {{ area_restrito.ti.nome }}</div>
+            </div>
+            {% endif %}
+
+            {% if produtos %}
+            <div class="indicator-card">
+                <div class="indicator-title">&#128230; Produtos</div>
+                <div class="stat-row">
+                    <div class="stat"><span class="stat-value">{{ produtos.total_produtos }}</span><span class="stat-label">Total</span></div>
+                </div>
+                {% if produtos.produtos.exists %}
+                <ul class="tag-list mt-8">
+                    {% for p in produtos.produtos.all %}
+                    <li class="tag">{{ p.nome }}</li>
                     {% endfor %}
                 </ul>
+                {% endif %}
             </div>
-        {% endif %}
+            {% endif %}
 
-        {% if leis %}
-            <div class="indicator-section">
-                <h3>Leis</h3>
-                <ul>
+            {% if contratos %}
+            <div class="indicator-card">
+                <div class="indicator-title">&#128221; Contratos</div>
+                {% if contratos.contratos.exists %}
+                <ul class="item-list">
+                    {% for c in contratos.contratos.all %}
+                    <li>{{ c.nome }} — <em>{{ c.get_estado_display }}</em></li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {% if leis %}
+            <div class="indicator-card">
+                <div class="indicator-title">&#9878; Leis e Políticas</div>
+                {% if leis.leis.exists %}
+                <ul class="item-list">
                     {% for lei in leis.leis.all %}
-                        <li>{{ lei.nome }} - {{ lei.tipo }} - {{ lei.situacao }}</li>
+                    <li>{{ lei.nome }} — {{ lei.tipo }} — <em>{{ lei.situacao }}</em></li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {% if mobilizados %}
+            <div class="indicator-card">
+                <div class="indicator-title">&#128176; Recursos Mobilizados</div>
+                <div class="stat-row">
+                    <div class="stat"><span class="stat-value">R$ {{ mobilizados.valor_mobilizado|floatformat:2 }}</span><span class="stat-label">Valor</span></div>
+                </div>
+                <div class="indicator-meta">{{ mobilizados.tipo_apoio }} — {{ mobilizados.fonte_apoio }}</div>
+            </div>
+            {% endif %}
+
+            {% if modelos %}
+            <div class="indicator-card">
+                <div class="indicator-title">&#128269; Modelos Aplicados</div>
+                <ul class="item-list">
+                    {% for m in modelos %}
+                    <li>{{ m.modelo.nome }} — <em>{{ m.status }}</em></li>
                     {% endfor %}
                 </ul>
             </div>
-        {% endif %}
+            {% endif %}
 
-        {% if aplicacao %}
-            <div class="indicator-section">
-                <h3>Aplicação</h3>
-                <p>Total de Pessoas: {{ aplicacao.total_pessoas }}</p>
-                <p>Homens: {{ aplicacao.homens }}</p>
-                <p>Mulheres: {{ aplicacao.mulheres }}</p>
-                <p>Jovens: {{ aplicacao.jovens }}</p>
-            </div>
-        {% endif %}
+        </div>
+    </section>
+    {% endif %}
 
-        {% if mobilizados %}
-            <div class="indicator-section">
-                <h3>Mobilizados</h3>
-                <p>Valor Mobilizado: {{ mobilizados.valor_mobilizado }}</p>
-                <p>Tipo de Apoio: {{ mobilizados.tipo_apoio }}</p>
-                <p>Fonte de Apoio: {{ mobilizados.fonte_apoio }}</p>
-            </div>
-        {% endif %}
-
-        {% if request %}
-            <div class="navigation-buttons">
-                <a href="{% url 'atividade_registro_anterior' atividade_registro.id %}" class="btn btn-primary">Anterior</a>
-                <a href="{% url 'atividade_registro_proximo' atividade_registro.id %}" class="btn btn-secondary">Próximo</a>
-            </div>
-        {% endif %}
+    <!-- ── NAVEGAÇÃO ─────────────────────────────────────────────── -->
+    <div class="nav-buttons">
+        <a href="{% url 'atividade_registro_anterior' atividade_registro.id %}" class="btn btn-secondary">&#8592; Anterior</a>
+        <a href="{% url 'atividade_registro_proximo' atividade_registro.id %}" class="btn btn-primary">Próximo &#8594;</a>
     </div>
-    <script src="{% static 'ieb/js/lightbox.js' %}"></script>
+
+</div>
+
+<!-- ── LIGHTBOX ──────────────────────────────────────────────────── -->
+<div id="lightbox" class="lightbox" onclick="closeLightbox()">
+    <span class="lightbox-close">&times;</span>
+    <img id="lightbox-img" src="" alt="Foto ampliada">
+</div>
+
+<script>
+function openLightbox(src) {
+    document.getElementById('lightbox-img').src = src;
+    document.getElementById('lightbox').classList.add('active');
+}
+function closeLightbox() {
+    document.getElementById('lightbox').classList.remove('active');
+}
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeLightbox();
+});
+</script>
+
 </body>
 </html>
