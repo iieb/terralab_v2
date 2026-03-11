@@ -1,0 +1,103 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registros de Atividade — Monitoramento</title>
+    <link rel="stylesheet" href="{% static 'ieb/css/monitoramento.css' %}">
+</head>
+<body>
+
+<div class="page-wrapper">
+
+    <header class="dash-header">
+        <h1>Registros de Atividade</h1>
+        <div class="header-links">
+            <a href="{% url 'monitoramento_metas' %}">Ver Metas →</a>
+        </div>
+    </header>
+
+    <!-- ── FILTROS ──────────────────────────────────────────────── -->
+    <section class="filter-bar">
+        <form method="get" class="filter-form">
+            <div class="filter-group">
+                <label for="programa">Programa</label>
+                <select id="programa" name="programa">
+                    <option value="">Todos</option>
+                    {% for p in programas %}
+                    <option value="{{ p.id }}" {% if filtros.programa == p.id|stringformat:"s" %}selected{% endif %}>
+                        {{ p.sigla }} — {{ p.nome }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="projeto">Projeto</label>
+                <select id="projeto" name="projeto">
+                    <option value="">Todos</option>
+                    {% for p in projetos %}
+                    <option value="{{ p.id }}" {% if filtros.projeto == p.id|stringformat:"s" %}selected{% endif %}>
+                        {{ p.nome_fant }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="data_inicio">De</label>
+                <input type="date" id="data_inicio" name="data_inicio" value="{{ filtros.data_inicio }}">
+            </div>
+            <div class="filter-group">
+                <label for="data_fim">Até</label>
+                <input type="date" id="data_fim" name="data_fim" value="{{ filtros.data_fim }}">
+            </div>
+            <button type="submit" class="btn-filtrar">Filtrar</button>
+            {% if filtros %}
+            <a href="{% url 'monitoramento_registros' %}" class="btn-limpar">Limpar</a>
+            {% endif %}
+        </form>
+    </section>
+
+    <!-- ── CONTADOR ──────────────────────────────────────────────── -->
+    <div class="result-count">{{ total }} registro{{ total|pluralize:"s" }} encontrado{{ total|pluralize:"s" }}</div>
+
+    <!-- ── TABELA ────────────────────────────────────────────────── -->
+    {% if registros %}
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Projeto</th>
+                    <th>Componente</th>
+                    <th>Atividade</th>
+                    <th>Responsável</th>
+                    <th>Local</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in registros %}
+                <tr>
+                    <td class="cell-date">{{ r.data_inicio|date:"d/m/Y" }}</td>
+                    <td>{{ r.projeto.nome_fant }}</td>
+                    <td class="cell-muted">{{ r.componente.codigo }}</td>
+                    <td>{{ r.atividade.nome }}</td>
+                    <td class="cell-muted">{{ r.equipe_projeto.equipe.nome }}</td>
+                    <td class="cell-muted">{{ r.local }}</td>
+                    <td>
+                        <a href="{% url 'atividade_registro_detalhe' r.pk %}" class="link-detalhe">Ver →</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">Nenhum registro encontrado com os filtros selecionados.</div>
+    {% endif %}
+
+</div>
+
+</body>
+</html>

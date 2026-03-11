@@ -60,9 +60,29 @@ class AtividadeTIInline(admin.TabularInline):
 # GESTÃO DE PROJETOS
 # ---------------------------------------------------------------------------
 
+class SubprojetoInline(admin.TabularInline):
+    model = Projeto
+    fk_name = 'projeto_pai'
+    extra = 0
+    fields = ('nome', 'nome_fant')
+    verbose_name = 'Sub-projeto'
+    verbose_name_plural = 'Sub-projetos'
+
+
+@admin.register(Programa)
+class ProgramaAdmin(admin.ModelAdmin):
+    list_display = ('sigla', 'nome', 'ativo')
+    list_filter = ('ativo',)
+    search_fields = ('nome', 'sigla')
+
+
 @admin.register(Projeto)
 class ProjetoAdmin(admin.ModelAdmin):
-    inlines = [ProjetoIndicadorInline, ComponenteInline, ProjetoOIInline, ProjetoTIInline]
+    list_display = ('nome_fant', 'nome', 'projeto_pai')
+    list_filter = ('programas', 'financiadores')
+    search_fields = ('nome', 'nome_fant')
+    filter_horizontal = ('programas', 'financiadores')
+    inlines = [SubprojetoInline, ProjetoIndicadorInline, ComponenteInline, ProjetoOIInline, ProjetoTIInline]
 
 
 @admin.register(Atividade)
@@ -95,7 +115,19 @@ admin.site.register(Financiador)
 admin.site.register(Instituicao)
 admin.site.register(Equipe)
 admin.site.register(EquipeProjeto)
-admin.site.register(Meta)
+@admin.register(Meta)
+class MetaAdmin(admin.ModelAdmin):
+    list_display = ('atividade', 'indicador', 'base', 'meta', 'data', 'get_realizado', 'get_percentual')
+    list_filter = ('indicador__tipo', 'atividade__componente__projeto')
+    search_fields = ('atividade__nome', 'indicador__nome')
+
+    @admin.display(description='Realizado')
+    def get_realizado(self, obj):
+        return obj.realizado
+
+    @admin.display(description='%')
+    def get_percentual(self, obj):
+        return f"{obj.percentual}%"
 admin.site.register(ProjetoOI)
 admin.site.register(ProjetoTI)
 admin.site.register(ProjetoIndicador)
@@ -123,7 +155,6 @@ admin.site.register(TIsIGATI)
 # ---------------------------------------------------------------------------
 
 admin.site.register(AtividadeRegistro)
-admin.site.register(AtividadeRegistroEquipe)
 admin.site.register(Treinados)
 admin.site.register(Capacitados)
 admin.site.register(Aplicacao)

@@ -5,11 +5,12 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.contrib import messages
 from .forms import AtividadeRegistroForm
-from .models import Projeto, Componente, Atividade, EquipeProjeto, Indicador, Meta, AtividadeRegistro, AtividadeRegistroFoto, AtividadeRegistroListaPresenca, Treinados, Leis, Planos, Capacitados, Organizacao, Parceria, Parcerias, Plano, PlanoHistorico, TIs, AreaDireto, AreaGeral, AreaRestrito, Produtos, Produto, Contrato, Contratos, Lei, LeiHistorico, Aplicacao, Mobilizados, Modelo, AtividadeRegistroModelo
+from .models import Programa, Projeto, Componente, Atividade, EquipeProjeto, Indicador, Meta, AtividadeRegistro, AtividadeRegistroFoto, AtividadeRegistroListaPresenca, Treinados, Leis, Planos, Capacitados, Organizacao, Parceria, Parcerias, Plano, PlanoHistorico, TIs, AreaDireto, AreaGeral, AreaRestrito, Produtos, Produto, Contrato, Contratos, Lei, LeiHistorico, Aplicacao, Mobilizados, Modelo, AtividadeRegistroModelo
 from django.views.decorators.csrf import csrf_exempt
 import unicodedata
 import re
 from decimal import Decimal, InvalidOperation
+from django.db import transaction
 from django.core.mail import send_mail
 from django.conf import settings
 from django.template.loader import render_to_string
@@ -462,8 +463,17 @@ def load_equipes_adicionais(request):
 
 def load_indicadores(request):
     atividade_id = request.GET.get('atividade')
-    indicadores = Indicador.objects.filter(meta__atividade_id=atividade_id).distinct()
-    data = [{'id': indicador.id, 'nome': indicador.nome, 'tipo': indicador.tipo} for indicador in indicadores]
+    projeto_id = request.GET.get('projeto')
+
+    qs = Indicador.objects.all()
+    if projeto_id:
+        # ProjetoIndicador é o mecanismo canônico de vínculo Projeto↔Indicador
+        qs = qs.filter(projeto_indicadores__projeto_id=projeto_id)
+    if atividade_id:
+        # Apenas indicadores com Meta definida para esta atividade
+        qs = qs.filter(meta__atividade_id=atividade_id)
+
+    data = [{'id': i.id, 'nome': i.nome, 'tipo': i.tipo} for i in qs.distinct()]
     return JsonResponse(data, safe=False)
 
 def atividade_registro_detalhe_view(request, pk):
@@ -770,7 +780,7 @@ def enviar_email_notificacao(atividade_registro_id, email_organizacao):
     """
 
     # Definir destinatários
-    recipient_list = ['monitoramento@iieb.org.br']
+    recipient_list = [settings.MONITORING_EMAIL]
     if email_organizacao:
         recipient_list.append(email_organizacao)
 
@@ -812,198 +822,235 @@ def _atividade_registro_process(request, template='atividade_registro_form.html'
     if request.method == 'POST':
         form = AtividadeRegistroForm(request.POST, request.FILES)
         if form.is_valid():
-            atividade_registro = form.save()
+            # Bug A fix: only one form.save(); all DB writes inside atomic block
+            with transaction.atomic():
+                atividade_registro = form.save()
 
-            for foto in request.FILES.getlist('fotos'):
-                AtividadeRegistroFoto.objects.create(atividade_registro=atividade_registro, foto=foto)
-            for lista in request.FILES.getlist('lista_presenca'):
-                AtividadeRegistroListaPresenca.objects.create(atividade_registro=atividade_registro, arquivo=lista)
+                for foto in request.FILES.getlist('fotos'):
+                    AtividadeRegistroFoto.objects.create(atividade_registro=atividade_registro, foto=foto)
+                for lista in request.FILES.getlist('lista_presenca'):
+                    AtividadeRegistroListaPresenca.objects.create(atividade_registro=atividade_registro, arquivo=lista)
 
-            treinados_data = {'total_pessoas': None, 'homens': None, 'mulheres': None, 'jovens': None, 'foco_treinamento': None}
-            planos_data = {'nome': '', 'tipo': '', 'situacao': ''}
-            capacitados_data = {'organizacoes': [], 'total_organizacoes': 0, 'foco_capacitacao': None}
-            parcerias_data = {'parcerias': [], 'total_parcerias': 0}
-            area_geral_data = {'tis': []}
-            area_direto_data = {'tis': []}
-            area_restrito_data = {'ti': None, 'area_em_ha': None}
-            produtos_data = {'produtos': [], 'total_produtos': 0}
-            contratos_data = {'contratos': []}
-            leis_data = {'leis': []}
-            aplicacao_data = {'total_pessoas': None, 'homens': None, 'mulheres': None, 'jovens': None}
-            mobilizados_data = {'valor_mobilizado': None, 'tipo_apoio': None, 'fonte_apoio': None}
-            modelos_data = {'modelos': [], 'status': {}}
+                # Bug C fix: one dict per indicador_id (not one shared dict per tipo)
+                treinados_map    = {}  # {id: {total_pessoas, homens, mulheres, jovens, foco_treinamento}}
+                planos_map       = {}  # {id: {planos: [ids]}}
+                capacitados_map  = {}  # {id: {organizacoes: [], foco_capacitacao}}
+                parcerias_map    = {}  # {id: {parcerias: [ids]}}
+                area_geral_map   = {}  # {id: {tis: [ids]}}
+                area_direto_map  = {}  # {id: {tis: [ids]}}
+                area_restrito_map = {} # {id: {ti, area_em_ha}}
+                produtos_map     = {}  # {id: {produtos: [ids]}}
+                contratos_map    = {}  # {id: {contratos: [ids]}}
+                leis_map         = {}  # {id: {leis: [ids]}}
+                aplicacao_map    = {}  # {id: {total_pessoas, homens, mulheres, jovens}}
+                mobilizados_map  = {}  # {id: {valor_mobilizado, tipo_apoio, fonte_apoio}}
+                modelos_map      = {}  # {id: {modelos: [], status: {}}}
+                indicadores_por_id = {}  # {id: Indicador obj} — para Bug D fix
 
-            treinados_exist = leis_exist = planos_exist = capacitados_exist = parcerias_exist = False
-            area_geral_exist = area_direto_exist = area_restrito_exist = False
-            produtos_exist = contratos_exist = aplicacao_exist = mobilizados_exist = modelos_exist = False
-
-            for key, value in request.POST.items():
-                if key.startswith('indicadores_'):
+                for key in request.POST:
+                    if not key.startswith('indicadores_'):
+                        continue
                     try:
-                        parts = key.split('_')
+                        parts = key.split('_', 2)
                         indicador_id = int(parts[1])
-                        field_name = '_'.join(parts[2:])
+                        field_name = parts[2]
                         indicador = Indicador.objects.get(id=indicador_id)
-
-                        if indicador.tipo == 'treinados':
-                            treinados_exist = True
-                            if field_name == 'total_pessoas': treinados_data['total_pessoas'] = int(value)
-                            elif field_name == 'homens': treinados_data['homens'] = int(value)
-                            elif field_name == 'mulheres': treinados_data['mulheres'] = int(value)
-                            elif field_name == 'jovens': treinados_data['jovens'] = int(value)
-                            elif field_name == 'foco_treinamento': treinados_data['foco_treinamento'] = value
-
-                        elif indicador.tipo == 'planos':
-                            planos_exist = True
-                            if field_name == 'nome': planos_data['nome'] = value
-                            elif field_name == 'tipo': planos_data['tipo'] = value
-                            elif field_name == 'situacao': planos_data['situacao'] = value
-
-                        elif indicador.tipo == 'capacitados':
-                            capacitados_exist = True
-                            if field_name == 'organizacoes': capacitados_data['organizacoes'].extend(request.POST.getlist(key))
-                            elif field_name == 'foco_capacitacao': capacitados_data['foco_capacitacao'] = value
-
-                        elif indicador.tipo == 'parcerias':
-                            parcerias_exist = True
-                            if field_name == 'parcerias': parcerias_data['parcerias'].extend(request.POST.getlist(key))
-
-                        elif indicador.tipo == 'area_geral':
-                            area_geral_exist = True
-                            if field_name == 'tis': area_geral_data['tis'].extend(request.POST.getlist(key))
-
-                        elif indicador.tipo == 'area_direto':
-                            area_direto_exist = True
-                            if field_name == 'tis': area_direto_data['tis'].extend(request.POST.getlist(key))
-
-                        elif indicador.tipo == 'area_restrito':
-                            area_restrito_exist = True
-                            if field_name == 'ti': area_restrito_data['ti'] = value
-                            elif field_name == 'area_em_ha':
-                                valor = value.replace(',', '.')
-                                try:
-                                    area_restrito_data['area_em_ha'] = Decimal(valor)
-                                except (InvalidOperation, ValueError):
-                                    area_restrito_data['area_em_ha'] = None
-
-                        elif indicador.tipo == 'produtos':
-                            produtos_exist = True
-                            if field_name == 'produtos': produtos_data['produtos'].extend(request.POST.getlist(key))
-
-                        elif indicador.tipo == 'contratos':
-                            contratos_exist = True
-                            if field_name == 'contratos': contratos_data['contratos'].extend(request.POST.getlist(key))
-
-                        elif indicador.tipo == 'leis_politicas':
-                            leis_exist = True
-                            if field_name == 'leis': leis_data['leis'].extend(request.POST.getlist(key))
-
-                        elif indicador.tipo == 'aplicacao':
-                            aplicacao_exist = True
-                            if field_name == 'total_pessoas': aplicacao_data['total_pessoas'] = int(value)
-                            elif field_name == 'homens': aplicacao_data['homens'] = int(value)
-                            elif field_name == 'mulheres': aplicacao_data['mulheres'] = int(value)
-                            elif field_name == 'jovens': aplicacao_data['jovens'] = int(value)
-
-                        elif indicador.tipo == 'mobilizados':
-                            mobilizados_exist = True
-                            if field_name == 'valor_mobilizado': mobilizados_data['valor_mobilizado'] = value
-                            elif field_name == 'tipo_apoio': mobilizados_data['tipo_apoio'] = value
-                            elif field_name == 'fonte_apoio': mobilizados_data['fonte_apoio'] = value
-
-                        elif indicador.tipo == 'outro':
-                            modelos_exist = True
-                            if field_name == 'modelos': modelos_data['modelos'].extend(request.POST.getlist(key))
-                            elif field_name.startswith('status_modelo_'):
-                                modelo_id = field_name.split('status_modelo_')[1]
-                                modelos_data['status'][modelo_id] = value
-                            elif field_name == 'novos_modelos':
-                                for nome in [n.strip() for n in value.split(',') if n.strip()]:
-                                    novo_modelo = Modelo.objects.create(nome=nome)
-                                    modelos_data['modelos'].append(str(novo_modelo.id))
-
-                    except (Indicador.DoesNotExist, ValueError) as e:
+                    except (ValueError, IndexError, Indicador.DoesNotExist) as e:
                         print(f"Erro ao processar o indicador {key}: {e}")
                         continue
 
-            if treinados_exist and all(v is not None for v in treinados_data.values()):
-                Treinados.objects.create(atividade_registro=atividade_registro, **treinados_data)
+                    indicadores_por_id[indicador_id] = indicador
+                    tipo = indicador.tipo
+                    value = request.POST[key]
 
-            if capacitados_exist and capacitados_data['organizacoes'] and capacitados_data['foco_capacitacao']:
-                inst = Capacitados(atividade_registro=atividade_registro, foco_capacitacao=capacitados_data['foco_capacitacao'])
-                inst.save()
-                inst.organizacoes.set(capacitados_data['organizacoes'])
-                inst.total_organizacoes = inst.organizacoes.count()
-                inst.save()
+                    if tipo == 'treinados':
+                        d = treinados_map.setdefault(indicador_id, {'total_pessoas': None, 'homens': None, 'mulheres': None, 'jovens': None, 'foco_treinamento': None})
+                        if field_name == 'total_pessoas': d['total_pessoas'] = int(value)
+                        elif field_name == 'homens': d['homens'] = int(value)
+                        elif field_name == 'mulheres': d['mulheres'] = int(value)
+                        elif field_name == 'jovens': d['jovens'] = int(value)
+                        elif field_name == 'foco_treinamento': d['foco_treinamento'] = value
 
-            if parcerias_exist and parcerias_data['parcerias']:
-                inst = Parcerias(atividade_registro=atividade_registro)
-                inst.save()
-                inst.parcerias.set(parcerias_data['parcerias'])
-                inst.total_parcerias = len(parcerias_data['parcerias'])
-                inst.save()
+                    elif tipo == 'planos':
+                        # Bug B fix: collect plano IDs for Planos (plural) M2M
+                        d = planos_map.setdefault(indicador_id, {'planos': []})
+                        if field_name == 'plano':
+                            d['planos'].extend(request.POST.getlist(key))
 
-            if planos_exist and planos_data['nome'] and planos_data['tipo'] and planos_data['situacao']:
-                Plano.objects.create(atividade_registro=atividade_registro, **planos_data)
+                    elif tipo == 'capacitados':
+                        d = capacitados_map.setdefault(indicador_id, {'organizacoes': [], 'foco_capacitacao': None})
+                        if field_name == 'organizacoes': d['organizacoes'].extend(request.POST.getlist(key))
+                        elif field_name == 'foco_capacitacao': d['foco_capacitacao'] = value
 
-            if area_geral_exist and area_geral_data['tis']:
-                inst = AreaGeral(atividade_registro=atividade_registro)
-                inst.save()
-                inst.tis.set(area_geral_data['tis'])
-                inst.total_tis = inst.tis.count()
-                inst.save()
+                    elif tipo == 'parcerias':
+                        d = parcerias_map.setdefault(indicador_id, {'parcerias': []})
+                        if field_name == 'parcerias': d['parcerias'].extend(request.POST.getlist(key))
 
-            if area_direto_exist and area_direto_data['tis']:
-                inst = AreaDireto(atividade_registro=atividade_registro)
-                inst.save()
-                inst.tis.set(area_direto_data['tis'])
-                inst.total_tis = inst.tis.count()
-                inst.save()
+                    elif tipo == 'area_geral':
+                        d = area_geral_map.setdefault(indicador_id, {'tis': []})
+                        if field_name == 'tis': d['tis'].extend(request.POST.getlist(key))
 
-            if area_restrito_exist and area_restrito_data['ti'] and area_restrito_data['area_em_ha']:
-                AreaRestrito.objects.create(
-                    atividade_registro=atividade_registro,
-                    ti_id=area_restrito_data['ti'],
-                    area_em_ha=area_restrito_data['area_em_ha']
-                )
+                    elif tipo == 'area_direto':
+                        d = area_direto_map.setdefault(indicador_id, {'tis': []})
+                        if field_name == 'tis': d['tis'].extend(request.POST.getlist(key))
 
-            if produtos_exist and produtos_data['produtos']:
-                inst = Produtos(atividade_registro=atividade_registro)
-                inst.save()
-                inst.produtos.set(produtos_data['produtos'])
-                inst.total_produtos = inst.produtos.count()
-                inst.save()
+                    elif tipo == 'area_restrito':
+                        d = area_restrito_map.setdefault(indicador_id, {'ti': None, 'area_em_ha': None})
+                        if field_name == 'ti': d['ti'] = value
+                        elif field_name == 'area_em_ha':
+                            valor = value.replace(',', '.')
+                            try:
+                                d['area_em_ha'] = Decimal(valor)
+                            except (InvalidOperation, ValueError):
+                                d['area_em_ha'] = None
 
-            if contratos_exist and contratos_data['contratos']:
-                inst = Contratos(atividade_registro=atividade_registro)
-                inst.save()
-                inst.contratos.set(contratos_data['contratos'])
-                inst.save()
+                    elif tipo == 'produtos':
+                        d = produtos_map.setdefault(indicador_id, {'produtos': []})
+                        if field_name == 'produtos': d['produtos'].extend(request.POST.getlist(key))
 
-            if leis_exist and leis_data['leis']:
-                inst = Leis(atividade_registro=atividade_registro)
-                inst.save()
-                inst.leis.set(leis_data['leis'])
-                inst.save()
+                    elif tipo == 'contratos':
+                        d = contratos_map.setdefault(indicador_id, {'contratos': []})
+                        if field_name == 'contratos': d['contratos'].extend(request.POST.getlist(key))
 
-            if aplicacao_exist and all(v is not None for v in aplicacao_data.values()):
-                Aplicacao.objects.create(atividade_registro=atividade_registro, **aplicacao_data)
+                    elif tipo == 'leis_politicas':
+                        d = leis_map.setdefault(indicador_id, {'leis': []})
+                        if field_name == 'leis': d['leis'].extend(request.POST.getlist(key))
 
-            if mobilizados_exist and mobilizados_data['valor_mobilizado'] and mobilizados_data['tipo_apoio'] and mobilizados_data['fonte_apoio']:
-                Mobilizados.objects.create(atividade_registro=atividade_registro, **mobilizados_data)
+                    elif tipo == 'aplicacao':
+                        d = aplicacao_map.setdefault(indicador_id, {'total_pessoas': None, 'homens': None, 'mulheres': None, 'jovens': None})
+                        if field_name == 'total_pessoas': d['total_pessoas'] = int(value)
+                        elif field_name == 'homens': d['homens'] = int(value)
+                        elif field_name == 'mulheres': d['mulheres'] = int(value)
+                        elif field_name == 'jovens': d['jovens'] = int(value)
 
-            if modelos_exist:
-                for modelo_id in modelos_data['modelos']:
-                    status = modelos_data['status'].get(modelo_id, '')
-                    if status:
-                        AtividadeRegistroModelo.objects.create(
+                    elif tipo == 'mobilizados':
+                        d = mobilizados_map.setdefault(indicador_id, {'valor_mobilizado': None, 'tipo_apoio': None, 'fonte_apoio': None})
+                        if field_name == 'valor_mobilizado': d['valor_mobilizado'] = value
+                        elif field_name == 'tipo_apoio': d['tipo_apoio'] = value
+                        elif field_name == 'fonte_apoio': d['fonte_apoio'] = value
+
+                    elif tipo == 'outro':
+                        d = modelos_map.setdefault(indicador_id, {'modelos': [], 'status': {}})
+                        if field_name == 'modelos': d['modelos'].extend(request.POST.getlist(key))
+                        elif field_name.startswith('status_modelo_'):
+                            modelo_id = field_name.split('status_modelo_')[1]
+                            d['status'][modelo_id] = value
+                        elif field_name == 'novos_modelos':
+                            for nome in [n.strip() for n in value.split(',') if n.strip()]:
+                                novo_modelo = Modelo.objects.create(nome=nome)
+                                d['modelos'].append(str(novo_modelo.id))
+
+                # Create one record per indicador_id (Bug C + D fix)
+                for ind_id, data in treinados_map.items():
+                    ind = indicadores_por_id.get(ind_id)
+                    if all(v is not None for v in data.values()):
+                        Treinados.objects.create(atividade_registro=atividade_registro, indicador=ind, **data)
+
+                for ind_id, data in capacitados_map.items():
+                    ind = indicadores_por_id.get(ind_id)
+                    if data['organizacoes'] and data['foco_capacitacao']:
+                        inst = Capacitados(atividade_registro=atividade_registro, indicador=ind, foco_capacitacao=data['foco_capacitacao'])
+                        inst.save()
+                        inst.organizacoes.set(data['organizacoes'])
+                        inst.total_organizacoes = inst.organizacoes.count()
+                        inst.save()
+
+                for ind_id, data in parcerias_map.items():
+                    ind = indicadores_por_id.get(ind_id)
+                    if data['parcerias']:
+                        inst = Parcerias(atividade_registro=atividade_registro, indicador=ind)
+                        inst.save()
+                        inst.parcerias.set(data['parcerias'])
+                        inst.total_parcerias = len(data['parcerias'])
+                        inst.save()
+
+                # Bug B fix: use Planos (plural) model with M2M
+                for ind_id, data in planos_map.items():
+                    ind = indicadores_por_id.get(ind_id)
+                    if data['planos']:
+                        inst = Planos(atividade_registro=atividade_registro, indicador=ind)
+                        inst.save()
+                        inst.planos.set(data['planos'])
+                        inst.save()  # Planos.save() auto-updates total_planos
+
+                for ind_id, data in area_geral_map.items():
+                    ind = indicadores_por_id.get(ind_id)
+                    if data['tis']:
+                        inst = AreaGeral(atividade_registro=atividade_registro, indicador=ind)
+                        inst.save()
+                        inst.tis.set(data['tis'])
+                        inst.total_tis = inst.tis.count()
+                        inst.save()
+
+                for ind_id, data in area_direto_map.items():
+                    ind = indicadores_por_id.get(ind_id)
+                    if data['tis']:
+                        inst = AreaDireto(atividade_registro=atividade_registro, indicador=ind)
+                        inst.save()
+                        inst.tis.set(data['tis'])
+                        inst.total_tis = inst.tis.count()
+                        inst.save()
+
+                for ind_id, data in area_restrito_map.items():
+                    ind = indicadores_por_id.get(ind_id)
+                    if data['ti'] and data['area_em_ha']:
+                        AreaRestrito.objects.create(
                             atividade_registro=atividade_registro,
-                            modelo_id=int(modelo_id),
-                            status=status
+                            indicador=ind,
+                            ti_id=data['ti'],
+                            area_em_ha=data['area_em_ha']
                         )
 
-            atividade_registro = form.save()
-            email_organizacao = form.cleaned_data.get('email_organizacao')
+                for ind_id, data in produtos_map.items():
+                    ind = indicadores_por_id.get(ind_id)
+                    if data['produtos']:
+                        inst = Produtos(atividade_registro=atividade_registro, indicador=ind)
+                        inst.save()
+                        inst.produtos.set(data['produtos'])
+                        inst.total_produtos = inst.produtos.count()
+                        inst.save()
+
+                for ind_id, data in contratos_map.items():
+                    ind = indicadores_por_id.get(ind_id)
+                    if data['contratos']:
+                        inst = Contratos(atividade_registro=atividade_registro, indicador=ind)
+                        inst.save()
+                        inst.contratos.set(data['contratos'])
+                        inst.save()
+
+                for ind_id, data in leis_map.items():
+                    ind = indicadores_por_id.get(ind_id)
+                    if data['leis']:
+                        inst = Leis(atividade_registro=atividade_registro, indicador=ind)
+                        inst.save()
+                        inst.leis.set(data['leis'])
+                        inst.save()
+
+                for ind_id, data in aplicacao_map.items():
+                    ind = indicadores_por_id.get(ind_id)
+                    if all(v is not None for v in data.values()):
+                        Aplicacao.objects.create(atividade_registro=atividade_registro, indicador=ind, **data)
+
+                for ind_id, data in mobilizados_map.items():
+                    ind = indicadores_por_id.get(ind_id)
+                    if data['valor_mobilizado'] and data['tipo_apoio'] and data['fonte_apoio']:
+                        Mobilizados.objects.create(atividade_registro=atividade_registro, indicador=ind, **data)
+
+                for ind_id, data in modelos_map.items():
+                    ind = indicadores_por_id.get(ind_id)
+                    for modelo_id in data['modelos']:
+                        status = data['status'].get(modelo_id, '')
+                        if status:
+                            AtividadeRegistroModelo.objects.create(
+                                atividade_registro=atividade_registro,
+                                indicador=ind,
+                                modelo_id=int(modelo_id),
+                                status=status
+                            )
+
+                email_organizacao = form.cleaned_data.get('email_organizacao')
+
+            # Email notification outside the atomic block (side effect)
             try:
                 enviar_email_notificacao(atividade_registro.id, email_organizacao)
             except Exception as e:
@@ -1111,5 +1158,68 @@ def _atividade_registro_process(request, template='atividade_registro_form.html'
 
 def apresentacao_moore(request):
     return render(request, 'apresentacao_moore.html')
+
+
+# ---------------------------------------------------------------------------
+# DASHBOARD DE MONITORAMENTO
+# ---------------------------------------------------------------------------
+
+def monitoramento_registros_view(request):
+    """Listagem de AtividadeRegistro com filtros por programa, projeto, atividade e data."""
+    qs = AtividadeRegistro.objects.select_related(
+        'projeto', 'componente', 'atividade', 'subatividade', 'equipe_projeto__equipe'
+    ).order_by('-data_inicio')
+
+    programa_id = request.GET.get('programa')
+    projeto_id = request.GET.get('projeto')
+    atividade_id = request.GET.get('atividade')
+    data_inicio = request.GET.get('data_inicio')
+    data_fim = request.GET.get('data_fim')
+
+    if programa_id:
+        qs = qs.filter(projeto__programas__id=programa_id)
+    if projeto_id:
+        qs = qs.filter(projeto_id=projeto_id)
+    if atividade_id:
+        qs = qs.filter(atividade_id=atividade_id)
+    if data_inicio:
+        qs = qs.filter(data_inicio__gte=data_inicio)
+    if data_fim:
+        qs = qs.filter(data_inicio__lte=data_fim)
+
+    registros = qs.distinct()
+
+    context = {
+        'registros': registros,
+        'total': registros.count(),
+        'programas': Programa.objects.filter(ativo=True).order_by('sigla'),
+        'projetos': Projeto.objects.filter(projeto_pai__isnull=True).order_by('nome_fant'),
+        'atividades': Atividade.objects.select_related('componente__projeto').order_by('codigo') if projeto_id else [],
+        'filtros': request.GET,
+    }
+    return render(request, 'monitoramento_registros.html', context)
+
+
+def monitoramento_metas_view(request):
+    """Metas por projeto com realizado e percentual de cumprimento."""
+    projeto_id = request.GET.get('projeto')
+
+    metas = Meta.objects.select_related(
+        'atividade__componente__projeto', 'indicador'
+    ).order_by(
+        'atividade__componente__projeto__nome_fant',
+        'atividade__codigo',
+        'indicador__nome',
+    )
+
+    if projeto_id:
+        metas = metas.filter(atividade__componente__projeto_id=projeto_id)
+
+    context = {
+        'metas': metas,
+        'projetos': Projeto.objects.filter(projeto_pai__isnull=True).order_by('nome_fant'),
+        'projeto_selecionado': projeto_id,
+    }
+    return render(request, 'monitoramento_metas.html', context)
 
 

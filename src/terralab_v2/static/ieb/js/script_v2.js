@@ -172,7 +172,8 @@ document.addEventListener('DOMContentLoaded', function () {
             })
             .catch(err => console.error('Erro ao carregar subatividades:', err));
 
-        fetch(`${urlIndicadores}?atividade=${atividadeId}`)
+        const projetoId = document.getElementById('id_projeto').value;
+        fetch(`${urlIndicadores}?atividade=${atividadeId}&projeto=${projetoId}`)
             .then(r => r.json())
             .then(data => {
                 if (data.length === 0) {

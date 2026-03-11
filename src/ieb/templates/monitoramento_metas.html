@@ -1,0 +1,99 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Metas — Monitoramento</title>
+    <link rel="stylesheet" href="{% static 'ieb/css/monitoramento.css' %}">
+</head>
+<body>
+
+<div class="page-wrapper">
+
+    <header class="dash-header">
+        <h1>Acompanhamento de Metas</h1>
+        <div class="header-links">
+            <a href="{% url 'monitoramento_registros' %}">← Ver Registros</a>
+        </div>
+    </header>
+
+    <!-- ── FILTRO DE PROJETO ─────────────────────────────────────── -->
+    <section class="filter-bar">
+        <form method="get" class="filter-form">
+            <div class="filter-group">
+                <label for="projeto">Projeto</label>
+                <select id="projeto" name="projeto">
+                    <option value="">Todos</option>
+                    {% for p in projetos %}
+                    <option value="{{ p.id }}" {% if projeto_selecionado == p.id|stringformat:"s" %}selected{% endif %}>
+                        {{ p.nome_fant }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn-filtrar">Filtrar</button>
+            {% if projeto_selecionado %}
+            <a href="{% url 'monitoramento_metas' %}" class="btn-limpar">Limpar</a>
+            {% endif %}
+        </form>
+    </section>
+
+    <!-- ── TABELA DE METAS ───────────────────────────────────────── -->
+    {% if metas %}
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Projeto</th>
+                    <th>Atividade</th>
+                    <th>Indicador</th>
+                    <th>Tipo</th>
+                    <th class="cell-num">Base</th>
+                    <th class="cell-num">Meta</th>
+                    <th class="cell-num">Realizado</th>
+                    <th class="cell-num">%</th>
+                    <th>Prazo</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in metas %}
+                {% with pct=m.percentual realizado=m.realizado %}
+                <tr>
+                    <td>{{ m.atividade.componente.projeto.nome_fant }}</td>
+                    <td>{{ m.atividade.codigo }} — {{ m.atividade.nome }}</td>
+                    <td>{{ m.indicador.nome }}</td>
+                    <td><span class="tipo-badge">{{ m.indicador.get_tipo_display }}</span></td>
+                    <td class="cell-num">{{ m.base }}</td>
+                    <td class="cell-num">{{ m.meta }}</td>
+                    <td class="cell-num">{{ realizado }}</td>
+                    <td class="cell-num">
+                        <div class="pct-wrap">
+                            <div class="pct-bar">
+                                <div class="pct-fill {% if pct >= 100 %}pct-done{% elif pct >= 60 %}pct-ok{% else %}pct-low{% endif %}"
+                                     style="width: {{ pct|floatformat:0 }}%{% if pct > 100 %}; width: 100%{% endif %}"></div>
+                            </div>
+                            <span class="pct-label {% if pct >= 100 %}pct-done{% elif pct >= 60 %}pct-ok{% else %}pct-low{% endif %}">{{ pct }}%</span>
+                        </div>
+                    </td>
+                    <td class="cell-muted">{{ m.data|date:"d/m/Y" }}</td>
+                </tr>
+                {% endwith %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        {% if projeto_selecionado %}
+            Nenhuma meta cadastrada para este projeto.
+        {% else %}
+            Selecione um projeto para ver as metas.
+        {% endif %}
+    </div>
+    {% endif %}
+
+</div>
+
+</body>
+</html>

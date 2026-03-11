@@ -176,3 +176,6 @@ if LDAP_ENABLED and "geonode_ldap" not in INSTALLED_APPS:
 
 # Add your specific LDAP configuration after this comment:
 # https://docs.geonode.org/en/master/advanced/contrib/#configuration
+
+# IEB — e-mail fixo para notificações de monitoramento
+MONITORING_EMAIL = os.getenv("MONITORING_EMAIL", "monitoramento@iieb.org.br")

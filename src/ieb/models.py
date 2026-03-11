@@ -123,14 +123,47 @@ class Equipe(models.Model):
     def __str__(self):
         return f"{self.nome} - {self.instituicao}"
 
-# GESTÃO DE PROJETOS - PROJETOS/COMPONENTES/ATIVIDADES/EQUIPE
+# GESTÃO DE PROJETOS - PROGRAMAS / PROJETOS / COMPONENTES / ATIVIDADES / EQUIPE
+
+class Programa(models.Model):
+    """Área temática institucional que agrupa Projetos estrategicamente.
+    Distinto de AreaTematica, que classifica Atividades individualmente."""
+    nome = models.CharField(max_length=255)
+    sigla = models.CharField(max_length=50, unique=True)
+    descricao = models.TextField(blank=True)
+    ativo = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = 'Programa'
+        verbose_name_plural = 'Programas'
+        ordering = ['sigla']
+
+    def __str__(self):
+        return self.sigla
+
 
 class Projeto(models.Model):
     nome = models.CharField(max_length=255)
     nome_fant = models.CharField(max_length=255)
+    programas = models.ManyToManyField(
+        Programa, related_name='projetos', blank=True,
+        verbose_name='Programas'
+    )
+    financiadores = models.ManyToManyField(
+        Financiador, related_name='projetos', blank=True,
+        verbose_name='Financiadores'
+    )
+    projeto_pai = models.ForeignKey(
+        'self', on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='subprojetos',
+        verbose_name='Projeto pai'
+    )
 
     def __str__(self):
-        return self.nome
+        if self.projeto_pai_id:
+            return f"{self.projeto_pai.nome_fant} / {self.nome_fant}"
+        return self.nome_fant
 
 
 class Componente(models.Model):
@@ -305,6 +338,44 @@ class Meta(models.Model):
     def __str__(self):
         return f"{self.atividade.codigo} - {self.indicador.nome} - {self.base} - {self.meta}"
 
+    @property
+    def realizado(self):
+        """Uso pontual (detalhe de uma Meta). Para listagens, usar anotação na queryset."""
+        from django.db.models import Sum
+        registros = AtividadeRegistro.objects.filter(atividade=self.atividade)
+        tipo = self.indicador.tipo
+        SUM_MAP = {
+            'treinados':      (Treinados,    'total_pessoas'),
+            'area_restrito':  (AreaRestrito, 'area_em_ha'),
+            'area_direto':    (AreaDireto,   'total_area'),
+            'area_geral':     (AreaGeral,    'total_area'),
+            'leis_politicas': (Leis,         'total_leis'),
+            'capacitados':    (Capacitados,  'total_organizacoes'),
+            'aplicacao':      (Aplicacao,    'total_pessoas'),
+            'planos':         (Planos,       'total_planos'),
+            'parcerias':      (Parcerias,    'total_parcerias'),
+            'mobilizados':    (Mobilizados,  'valor_mobilizado'),
+            'produtos':       (Produtos,     'total_produtos'),
+        }
+        COUNT_MAP = {
+            'contratos': Contratos,
+        }
+        if tipo in SUM_MAP:
+            Model, field = SUM_MAP[tipo]
+            result = Model.objects.filter(
+                atividade_registro__in=registros, indicador=self.indicador
+            ).aggregate(total=Sum(field))
+            return result['total'] or 0
+        elif tipo in COUNT_MAP:
+            return COUNT_MAP[tipo].objects.filter(
+                atividade_registro__in=registros, indicador=self.indicador
+            ).count()
+        return 0
+
+    @property
+    def percentual(self):
+        return round((self.realizado / self.meta) * 100, 1) if self.meta else 0
+
 
 class AtividadeRegistro(models.Model):
     projeto = models.ForeignKey(Projeto, on_delete=models.CASCADE)
@@ -319,45 +390,10 @@ class AtividadeRegistro(models.Model):
     propostas = models.CharField(max_length=255, blank=True)
     sucesso = models.CharField(max_length=255, blank=True)
     melhores_praticas = models.CharField(max_length=255, blank=True)
-    fotos = models.ImageField(upload_to='fotos/', blank = True)  # Usar ImageField para suportar upload de mídia
-    fotos_thumbnail = models.ImageField(upload_to='fotos/thumbnails/', blank=True, editable=False)
     descricao = models.TextField()
     local = models.CharField(max_length=255)
     comentarios = models.TextField(blank=True)
-    lista_presenca = models.ImageField(upload_to='listas_presenca/', blank=True)  # Novo campo para lista de presença
     email_organizacao = models.EmailField(max_length=255, blank=True, null=True)
-    
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-
-        if self.fotos:
-            # Caminho da imagem original
-            img_path = self.fotos.path
-
-            # Abrindo a imagem usando Pillow
-            with Image.open(img_path) as img:
-                # Se a imagem estiver em RGBA, converta para RGB
-                if img.mode == 'RGBA':
-                    img = img.convert('RGB')
-
-                # Definindo o tamanho máximo da miniatura
-                img.thumbnail((300, 300))  # Redimensiona mantendo a proporção
-
-                # Definindo o caminho da miniatura
-                thumbnail_dir = os.path.join(os.path.dirname(img_path), 'thumbnails')
-                # Verificar se o diretório existe, se não, cria-o
-                if not os.path.exists(thumbnail_dir):
-                    os.makedirs(thumbnail_dir)
-
-                thumbnail_path = os.path.join(thumbnail_dir, os.path.basename(img_path))
-
-                # Salvando a miniatura no caminho definido
-                img.save(thumbnail_path, format='JPEG', quality=85)
-
-                # Atualizando o campo fotos_thumbnail com o caminho da miniatura
-                self.fotos_thumbnail.name = os.path.join('fotos/thumbnails/', os.path.basename(img_path))
-
-        super().save(*args, **kwargs)
 
 
     def __str__(self):
@@ -397,24 +433,19 @@ class AtividadeRegistroListaPresenca(models.Model):
         return f"Lista de presença - {self.atividade_registro}"
 
 
-class AtividadeRegistroEquipe(models.Model):
-    equipe_projeto = models.ForeignKey(EquipeProjeto, on_delete=models.CASCADE)
-    atividade_registro = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE, default=1)
-
-    def __str__(self):
-        return f"{self.equipe_projeto} - {self.atividade_registro}"
-
 # GESTÃO DE PROJETOS - INDICADORES USAID
 
 # 10.2-1 restrito - OK
 class AreaRestrito(models.Model):
     atividade_registro = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE)
+    indicador = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     ti = models.ForeignKey(TIs, on_delete=models.CASCADE, related_name='area_restrito')
     area_em_ha = models.DecimalField(max_digits=12, decimal_places=2)
 
     class Meta:
         verbose_name = 'Área Restrita'
         verbose_name_plural = 'Áreas Restritas'
+        unique_together = ('atividade_registro', 'indicador')
 
     def __str__(self):
         return f"{self.atividade_registro} - {self.ti.nome} - {self.area_em_ha} ha"
@@ -422,6 +453,7 @@ class AreaRestrito(models.Model):
 # 10.2-2 direto - OK
 class AreaDireto(models.Model):
     atividade_registro = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE)
+    indicador = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     tis = models.ManyToManyField(TIs, related_name='area_direto')
     total_tis = models.PositiveIntegerField(default=0, editable=False)
     total_area = models.FloatField(default=0.0, editable=False)  # Novo campo para armazenar a soma da área das TIs
@@ -442,6 +474,7 @@ class AreaDireto(models.Model):
 # 10.2-3 geral - OK
 class AreaGeral(models.Model):
     atividade_registro = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE)
+    indicador = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     tis = models.ManyToManyField(TIs, related_name='area_geral')
     total_tis = models.PositiveIntegerField(default=0, editable=False)
     total_area = models.FloatField(default=0.0, editable=False)  # Novo campo para armazenar a soma da área das TIs
@@ -462,6 +495,7 @@ class AreaGeral(models.Model):
 # 10.2-4 treinados - OK
 class Treinados(models.Model):
     atividade_registro = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE, default=1)
+    indicador = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     total_pessoas = models.PositiveIntegerField(default=0)
     homens = models.PositiveIntegerField(default=0)
     mulheres = models.PositiveIntegerField(default=0)
@@ -498,6 +532,7 @@ class Lei(models.Model):
 
 class Leis(models.Model):
     atividade_registro = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE)
+    indicador = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     leis = models.ManyToManyField(Lei, related_name='leis')
     total_leis = models.PositiveIntegerField(default=0, editable=False)
 
@@ -532,6 +567,7 @@ class Organizacao(models.Model):
     
 class Capacitados(models.Model):
     atividade_registro = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE, default=1)
+    indicador = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     organizacoes = models.ManyToManyField(Organizacao, related_name='capacitados')
     total_organizacoes = models.PositiveIntegerField(default=0, editable=False)
     foco_capacitacao = models.CharField(max_length=50, choices=[
@@ -555,6 +591,7 @@ class Capacitados(models.Model):
 # 8 aplicação - OK
 class Aplicacao(models.Model):
     atividade_registro = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE)
+    indicador = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     total_pessoas = models.PositiveIntegerField()
     homens = models.PositiveIntegerField()
     mulheres = models.PositiveIntegerField()
@@ -587,6 +624,7 @@ class Plano(models.Model):
 
 class Planos(models.Model):
     atividade_registro = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE, default=1)
+    indicador = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     planos = models.ManyToManyField(Plano, related_name='planos')
     total_planos = models.PositiveIntegerField(default=0, editable=False)
 
@@ -603,9 +641,6 @@ class Planos(models.Model):
         return f"{self.atividade_registro} - {self.total_planos} planos"
 
 
-    def __str__(self):
-        return f"{self.nome} - {self.tipo} - {self.situacao}"
-    
 class PlanoHistorico(models.Model):
     plano = models.ForeignKey(Plano, on_delete=models.CASCADE)
     situacao_anterior = models.CharField(max_length=255, choices=[('em desenvolvimento', 'Em Desenvolvimento'), ('proposto', 'Proposto'), ('adotado', 'Adotado'), ('implementado', 'Implementado')])
@@ -626,6 +661,7 @@ class Parceria(models.Model):
 
 class Parcerias(models.Model):
     atividade_registro = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE)
+    indicador = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     parcerias = models.ManyToManyField(Parceria, related_name='parcerias')
     total_parcerias = models.PositiveIntegerField(default=0, editable=False)
 
@@ -642,6 +678,7 @@ class Parcerias(models.Model):
 
 class Mobilizados(models.Model):
     atividade_registro = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE)
+    indicador = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     valor_mobilizado = models.DecimalField(max_digits=12, decimal_places=2)
     tipo_apoio = models.CharField(max_length=255, choices=[
         ('Contribuição em dinheiro', 'Contribuição em dinheiro'),
@@ -678,6 +715,7 @@ class Produto(models.Model):
     
 class Produtos(models.Model):
     atividade_registro = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE, default=1)
+    indicador = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     produtos = models.ManyToManyField(Produto, related_name='produtos')
     total_produtos = models.PositiveIntegerField(default=0, editable=False)
 
@@ -708,6 +746,7 @@ class Contrato(models.Model):
 
 class Contratos(models.Model):
     atividade_registro = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE)
+    indicador = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     contratos = models.ManyToManyField(Contrato, related_name='contratos_registro')
 
     def __str__(self):
@@ -725,6 +764,7 @@ class Modelo(models.Model):
     
 class AtividadeRegistroModelo(models.Model):
     atividade_registro = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE)
+    indicador = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     modelo = models.ForeignKey(Modelo, on_delete=models.CASCADE)
     status = models.CharField(
         max_length=50,

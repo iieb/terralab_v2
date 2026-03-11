@@ -1,0 +1,219 @@
+/* =============================================================
+   MONITORAMENTO — Dashboard de Registros e Metas
+   Paleta: #f0ede8 bg · #8c4a10 marrom · #d26b16 laranja
+   ============================================================= */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    margin: 0;
+    padding: 24px 16px 64px;
+    background: #f0ede8;
+    color: #333;
+}
+
+.page-wrapper {
+    max-width: 1100px;
+    margin: 0 auto;
+}
+
+/* ── CABEÇALHO ──────────────────────────────────────────────── */
+.dash-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.dash-header h1 {
+    font-size: 1.6rem;
+    color: #8c4a10;
+    margin: 0;
+}
+
+.header-links a {
+    font-size: 0.9rem;
+    color: #d26b16;
+    text-decoration: none;
+    font-weight: 600;
+}
+.header-links a:hover { text-decoration: underline; }
+
+/* ── FILTROS ────────────────────────────────────────────────── */
+.filter-bar {
+    background: #fff;
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+}
+
+.filter-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: flex-end;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.filter-group label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.filter-group select,
+.filter-group input[type="date"] {
+    padding: 7px 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 0.88rem;
+    background: #fafafa;
+    color: #333;
+    min-width: 160px;
+}
+
+.btn-filtrar {
+    padding: 8px 18px;
+    background: #8c4a10;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    align-self: flex-end;
+}
+.btn-filtrar:hover { background: #6e3a0d; }
+
+.btn-limpar {
+    padding: 8px 14px;
+    color: #888;
+    font-size: 0.84rem;
+    text-decoration: none;
+    align-self: flex-end;
+}
+.btn-limpar:hover { color: #555; text-decoration: underline; }
+
+/* ── CONTADOR ───────────────────────────────────────────────── */
+.result-count {
+    font-size: 0.84rem;
+    color: #888;
+    margin-bottom: 12px;
+}
+
+/* ── TABELA ─────────────────────────────────────────────────── */
+.table-wrapper {
+    overflow-x: auto;
+    border-radius: 10px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    font-size: 0.88rem;
+}
+
+.data-table thead th {
+    background: #8c4a10;
+    color: #fff;
+    font-weight: 600;
+    padding: 11px 14px;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.data-table thead th.cell-num { text-align: right; }
+
+.data-table tbody tr { border-bottom: 1px solid #f0ede8; }
+.data-table tbody tr:hover { background: #fdf7f2; }
+.data-table tbody tr:last-child { border-bottom: none; }
+
+.data-table td {
+    padding: 10px 14px;
+    vertical-align: middle;
+}
+
+.cell-date { white-space: nowrap; color: #8c4a10; font-weight: 600; }
+.cell-muted { color: #888; }
+.cell-num { text-align: right; font-variant-numeric: tabular-nums; }
+
+.link-detalhe {
+    color: #d26b16;
+    text-decoration: none;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.link-detalhe:hover { text-decoration: underline; }
+
+/* ── BADGE TIPO ─────────────────────────────────────────────── */
+.tipo-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: #fde8d0;
+    color: #8c4a10;
+    white-space: nowrap;
+}
+
+/* ── BARRA DE PROGRESSO ─────────────────────────────────────── */
+.pct-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.pct-bar {
+    width: 70px;
+    height: 7px;
+    background: #eee;
+    border-radius: 4px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.pct-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width .3s;
+}
+
+.pct-done { background: #2d6a2d; }
+.pct-ok   { background: #d26b16; }
+.pct-low  { background: #c0392b; }
+
+.pct-label {
+    font-size: 0.82rem;
+    font-weight: 700;
+    min-width: 42px;
+    text-align: right;
+}
+.pct-label.pct-done { color: #2d6a2d; }
+.pct-label.pct-ok   { color: #d26b16; }
+.pct-label.pct-low  { color: #c0392b; }
+
+/* ── ESTADO VAZIO ───────────────────────────────────────────── */
+.empty-state {
+    text-align: center;
+    padding: 48px 24px;
+    color: #aaa;
+    font-size: 0.95rem;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+}
