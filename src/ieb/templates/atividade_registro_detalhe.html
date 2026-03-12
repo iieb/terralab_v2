@@ -217,16 +217,14 @@
             {% if planos %}
             <div class="indicator-card">
                 <div class="indicator-title">&#128196; Planos</div>
-                <div class="stat-row">
-                    <div class="stat"><span class="stat-value">{{ planos.total_planos }}</span><span class="stat-label">Total</span></div>
-                </div>
-                {% if planos.planos.exists %}
                 <ul class="item-list mt-8">
-                    {% for p in planos.planos.all %}
-                    <li>{{ p.nome }} — <em>{{ p.situacao }}</em></li>
+                    {% for p in planos %}
+                    {% if p.plano %}
+                    <li><strong>{{ p.plano.nome }}</strong> ({{ p.plano.tipo }})
+                        — {{ p.situacao_anterior }} → <em>{{ p.situacao_nova }}</em></li>
+                    {% endif %}
                     {% endfor %}
                 </ul>
-                {% endif %}
             </div>
             {% endif %}
 

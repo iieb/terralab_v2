@@ -35,6 +35,43 @@ class MetaInline(admin.TabularInline):
     model = Meta
     extra = 1
 
+    def get_formset(self, request, obj=None, **kwargs):
+        self._projeto_id = obj.componente.projeto_id if (obj and obj.componente_id) else None
+        return super().get_formset(request, obj, **kwargs)
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == 'indicador' and getattr(self, '_projeto_id', None):
+            kwargs['queryset'] = Indicador.objects.filter(
+                projeto_indicadores__projeto_id=self._projeto_id
+            )
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+
+class MetaFinanciadorInline(admin.TabularInline):
+    model = MetaFinanciador
+    extra = 1
+
+    def get_formset(self, request, obj=None, **kwargs):
+        self._projeto_id = obj.componente.projeto_id if (obj and obj.componente_id) else None
+        return super().get_formset(request, obj, **kwargs)
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == 'indicador_financiador' and getattr(self, '_projeto_id', None):
+            kwargs['queryset'] = IndicadorFinanciador.objects.filter(
+                projeto_indicadores_fin__projeto_id=self._projeto_id
+            )
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+
+class ProjetoIndicadorFinInline(admin.TabularInline):
+    model = ProjetoIndicadorFin
+    extra = 1
+
+
+class IndicadorFinanciadorInline(admin.TabularInline):
+    model = IndicadorFinanciador
+    extra = 1
+
 
 class AtividadeAreaTematicaInline(admin.TabularInline):
     model = AtividadeAreaTematica
@@ -82,12 +119,12 @@ class ProjetoAdmin(admin.ModelAdmin):
     list_filter = ('programas', 'financiadores')
     search_fields = ('nome', 'nome_fant')
     filter_horizontal = ('programas', 'financiadores')
-    inlines = [SubprojetoInline, ProjetoIndicadorInline, ComponenteInline, ProjetoOIInline, ProjetoTIInline]
+    inlines = [SubprojetoInline, ProjetoIndicadorInline, ProjetoIndicadorFinInline, ComponenteInline, ProjetoOIInline, ProjetoTIInline]
 
 
 @admin.register(Atividade)
 class AtividadeAdmin(admin.ModelAdmin):
-    inlines = [SubatividadeInline, MetaInline, AtividadeAreaTematicaInline, AtividadeOILocalInline, AtividadeOIRegionalInline, AtividadeTIInline]
+    inlines = [SubatividadeInline, MetaInline, MetaFinanciadorInline, AtividadeAreaTematicaInline, AtividadeOILocalInline, AtividadeOIRegionalInline, AtividadeTIInline]
 
 
 @admin.register(Subatividade)
@@ -111,7 +148,18 @@ class IndicadorAdmin(admin.ModelAdmin):
 
 
 admin.site.register(Componente)
-admin.site.register(Financiador)
+@admin.register(Financiador)
+class FinanciadorAdmin(admin.ModelAdmin):
+    list_display = ('sigla', 'nome')
+    search_fields = ('nome', 'sigla')
+    inlines = [IndicadorFinanciadorInline]
+
+
+@admin.register(IndicadorFinanciador)
+class IndicadorFinanciadorAdmin(admin.ModelAdmin):
+    list_display = ('nome', 'codigo', 'tipo', 'financiador')
+    list_filter = ('tipo', 'financiador')
+    search_fields = ('nome', 'codigo')
 admin.site.register(Instituicao)
 admin.site.register(Equipe)
 admin.site.register(EquipeProjeto)
@@ -131,6 +179,8 @@ class MetaAdmin(admin.ModelAdmin):
 admin.site.register(ProjetoOI)
 admin.site.register(ProjetoTI)
 admin.site.register(ProjetoIndicador)
+admin.site.register(ProjetoIndicadorFin)
+admin.site.register(MetaFinanciador)
 admin.site.register(AtividadeAreaTematica)
 admin.site.register(AtividadeOILocal)
 admin.site.register(AtividadeOIRegional)
@@ -164,8 +214,29 @@ admin.site.register(AreaGeral)
 admin.site.register(Leis)
 admin.site.register(Lei)
 admin.site.register(LeiHistorico)
-admin.site.register(Planos)
-admin.site.register(Plano)
+class PlanoHistoricoInline(admin.TabularInline):
+    model = PlanoHistorico
+    extra = 0
+    readonly_fields = ('situacao_anterior', 'situacao_nova', 'data_alteracao', 'usuario')
+    can_delete = False
+
+
+@admin.register(Plano)
+class PlanoAdmin(admin.ModelAdmin):
+    list_display = ('nome', 'tipo', 'situacao')
+    list_filter = ('tipo', 'situacao')
+    search_fields = ('nome',)
+    filter_horizontal = ('tis',)
+    inlines = [PlanoHistoricoInline]
+
+
+@admin.register(Planos)
+class PlanosAdmin(admin.ModelAdmin):
+    list_display = ('atividade_registro', 'indicador', 'plano', 'situacao_anterior', 'situacao_nova')
+    list_filter = ('situacao_nova',)
+    raw_id_fields = ('atividade_registro', 'indicador', 'plano')
+
+
 admin.site.register(PlanoHistorico)
 admin.site.register(Parcerias)
 admin.site.register(Parceria)

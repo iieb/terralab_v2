@@ -223,6 +223,19 @@ class ProjetoIndicador(models.Model):
         return f"{self.projeto.nome_fant} — {self.indicador.nome}"
 
 
+class ProjetoIndicadorFin(models.Model):
+    projeto               = models.ForeignKey(Projeto, on_delete=models.CASCADE, related_name='projeto_indicadores_fin')
+    indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.CASCADE, related_name='projeto_indicadores_fin')
+
+    class Meta:
+        unique_together = ('projeto', 'indicador_financiador')
+        verbose_name = 'Indicador de Financiador do Projeto'
+        verbose_name_plural = 'Indicadores de Financiadores do Projeto'
+
+    def __str__(self):
+        return f"{self.projeto.nome_fant} — {self.indicador_financiador}"
+
+
 # GESTÃO DE PROJETOS - ÁREAS TEMÁTICAS E VÍNCULOS DE ATIVIDADE
 
 class AreaTematica(models.Model):
@@ -301,31 +314,54 @@ class AtividadeTI(models.Model):
 
 # GESTÃO DE PROJETOS - INDICADORES/METAS/REGISTROS
 
+INDICADOR_TIPO_CHOICES = [
+    ('area_restrito', 'Área Restrita'),
+    ('area_direto', 'Área Direta'),
+    ('area_geral', 'Área Geral'),
+    ('treinados', 'Pessoas Treinadas'),
+    ('leis_politicas', 'Leis e Políticas'),
+    ('capacitados', 'Organizações Capacitadas'),
+    ('aplicacao', 'Aplicação'),
+    ('planos', 'Planos'),
+    ('parcerias', 'Parcerias'),
+    ('mobilizados', 'Recursos Mobilizados'),
+    ('produtos', 'Produtos'),
+    ('contratos', 'Contratos'),
+    ('outro', 'Outro'),
+]
+
+
 class Indicador(models.Model):
-    TIPO_CHOICES = [
-        ('area_restrito', 'Área Restrita'),
-        ('area_direto', 'Área Direta'),
-        ('area_geral', 'Área Geral'),
-        ('treinados', 'Pessoas Treinadas'),
-        ('leis_politicas', 'Leis e Políticas'),
-        ('capacitados', 'Organizações Capacitadas'),
-        ('aplicacao', 'Aplicação'),
-        ('planos', 'Planos'),
-        ('parcerias', 'Parcerias'),
-        ('mobilizados', 'Recursos Mobilizados'),
-        ('produtos', 'Produtos'),
-        ('contratos', 'Contratos'),
-        ('outro', 'Outro'),
-    ]
+    TIPO_CHOICES = INDICADOR_TIPO_CHOICES
 
     nome = models.CharField(max_length=255)
     codigo = models.CharField(max_length=255)
     descricao = models.CharField(max_length=255)
     reporte = models.CharField(max_length=255)
-    tipo = models.CharField(max_length=30, choices=TIPO_CHOICES, default='outro')
+    tipo = models.CharField(max_length=30, choices=INDICADOR_TIPO_CHOICES, default='outro')
 
     def __str__(self):
         return self.nome
+
+
+class IndicadorFinanciador(models.Model):
+    financiador = models.ForeignKey(
+        Financiador, on_delete=models.CASCADE,
+        related_name='indicadores_proprios',
+        verbose_name='Financiador',
+    )
+    nome      = models.CharField(max_length=255)
+    codigo    = models.CharField(max_length=255, blank=True)
+    descricao = models.CharField(max_length=255, blank=True)
+    reporte   = models.CharField(max_length=255, blank=True)
+    tipo      = models.CharField(max_length=30, choices=INDICADOR_TIPO_CHOICES, default='outro')
+
+    class Meta:
+        verbose_name = 'Indicador de Financiador'
+        verbose_name_plural = 'Indicadores de Financiadores'
+
+    def __str__(self):
+        return f"{self.financiador.sigla} — {self.nome}"
 
 
 class Meta(models.Model):
@@ -352,7 +388,7 @@ class Meta(models.Model):
             'leis_politicas': (Leis,         'total_leis'),
             'capacitados':    (Capacitados,  'total_organizacoes'),
             'aplicacao':      (Aplicacao,    'total_pessoas'),
-            'planos':         (Planos,       'total_planos'),
+            # 'planos' usa lógica própria (score de situação) — ver abaixo
             'parcerias':      (Parcerias,    'total_parcerias'),
             'mobilizados':    (Mobilizados,  'valor_mobilizado'),
             'produtos':       (Produtos,     'total_produtos'),
@@ -369,6 +405,64 @@ class Meta(models.Model):
         elif tipo in COUNT_MAP:
             return COUNT_MAP[tipo].objects.filter(
                 atividade_registro__in=registros, indicador=self.indicador
+            ).count()
+        elif tipo == 'planos':
+            ultimo = Planos.objects.filter(
+                atividade_registro__atividade=self.atividade,
+                indicador=self.indicador
+            ).select_related('plano').order_by('-pk').first()
+            if not ultimo or not ultimo.plano:
+                return 0
+            SCORE = {'em desenvolvimento': 1, 'proposto': 2, 'adotado': 3, 'implementado': 4}
+            return SCORE.get(ultimo.plano.situacao, 0)
+        return 0
+
+    @property
+    def percentual(self):
+        return round((self.realizado / self.meta) * 100, 1) if self.meta else 0
+
+
+class MetaFinanciador(models.Model):
+    atividade             = models.ForeignKey(Atividade, on_delete=models.CASCADE, related_name='metas_financiador')
+    indicador_financiador = models.ForeignKey(IndicadorFinanciador, on_delete=models.CASCADE, related_name='metas')
+    base = models.FloatField()
+    meta = models.FloatField()
+    data = models.DateField()
+
+    def __str__(self):
+        return f"{self.atividade.codigo} - {self.indicador_financiador.nome}"
+
+    @property
+    def realizado(self):
+        from django.db.models import Sum
+        tipo = self.indicador_financiador.tipo
+        registros = AtividadeRegistro.objects.filter(atividade=self.atividade)
+        SUM_MAP = {
+            'treinados':      (Treinados,    'total_pessoas'),
+            'area_restrito':  (AreaRestrito, 'area_em_ha'),
+            'area_direto':    (AreaDireto,   'total_area'),
+            'area_geral':     (AreaGeral,    'total_area'),
+            'leis_politicas': (Leis,         'total_leis'),
+            'capacitados':    (Capacitados,  'total_organizacoes'),
+            'aplicacao':      (Aplicacao,    'total_pessoas'),
+            'parcerias':      (Parcerias,    'total_parcerias'),
+            'mobilizados':    (Mobilizados,  'valor_mobilizado'),
+            'produtos':       (Produtos,     'total_produtos'),
+        }
+        COUNT_MAP = {
+            'contratos': Contratos,
+        }
+        if tipo in SUM_MAP:
+            Model, field = SUM_MAP[tipo]
+            result = Model.objects.filter(
+                atividade_registro__in=registros,
+                indicador_financiador=self.indicador_financiador
+            ).aggregate(total=Sum(field))
+            return result['total'] or 0
+        elif tipo in COUNT_MAP:
+            return COUNT_MAP[tipo].objects.filter(
+                atividade_registro__in=registros,
+                indicador_financiador=self.indicador_financiador
             ).count()
         return 0
 
@@ -433,12 +527,13 @@ class AtividadeRegistroListaPresenca(models.Model):
         return f"Lista de presença - {self.atividade_registro}"
 
 
-# GESTÃO DE PROJETOS - INDICADORES USAID
+# GESTÃO DE PROJETOS
 
-# 10.2-1 restrito - OK
+# AREA RESTRITO
 class AreaRestrito(models.Model):
     atividade_registro = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE)
     indicador = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     ti = models.ForeignKey(TIs, on_delete=models.CASCADE, related_name='area_restrito')
     area_em_ha = models.DecimalField(max_digits=12, decimal_places=2)
 
@@ -450,10 +545,11 @@ class AreaRestrito(models.Model):
     def __str__(self):
         return f"{self.atividade_registro} - {self.ti.nome} - {self.area_em_ha} ha"
 
-# 10.2-2 direto - OK
+# AREA DIRETO
 class AreaDireto(models.Model):
     atividade_registro = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE)
     indicador = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     tis = models.ManyToManyField(TIs, related_name='area_direto')
     total_tis = models.PositiveIntegerField(default=0, editable=False)
     total_area = models.FloatField(default=0.0, editable=False)  # Novo campo para armazenar a soma da área das TIs
@@ -471,10 +567,11 @@ class AreaDireto(models.Model):
     def __str__(self):
         return f"{self.atividade_registro} - {self.total_tis} TIs - {self.total_area} ha de área"
 
-# 10.2-3 geral - OK
+# AREA GERAL
 class AreaGeral(models.Model):
     atividade_registro = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE)
     indicador = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     tis = models.ManyToManyField(TIs, related_name='area_geral')
     total_tis = models.PositiveIntegerField(default=0, editable=False)
     total_area = models.FloatField(default=0.0, editable=False)  # Novo campo para armazenar a soma da área das TIs
@@ -492,10 +589,11 @@ class AreaGeral(models.Model):
     def __str__(self):
         return f"{self.atividade_registro} - {self.total_tis} TIs - {self.total_area} ha de área"
     
-# 10.2-4 treinados - OK
+# PESSOAS TREINADAS
 class Treinados(models.Model):
     atividade_registro = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE, default=1)
     indicador = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     total_pessoas = models.PositiveIntegerField(default=0)
     homens = models.PositiveIntegerField(default=0)
     mulheres = models.PositiveIntegerField(default=0)
@@ -510,7 +608,7 @@ class Treinados(models.Model):
     def __str__(self):
         return f"{self.atividade_registro} - {self.total_pessoas}"
 
-# 10.2-5 Leis Políticas - OK
+# LEIS E POLÍTICAS
 class Lei(models.Model):
     TIPO_CHOICES = [
         ('PGTA', 'PGTA'),
@@ -533,6 +631,7 @@ class Lei(models.Model):
 class Leis(models.Model):
     atividade_registro = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE)
     indicador = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     leis = models.ManyToManyField(Lei, related_name='leis')
     total_leis = models.PositiveIntegerField(default=0, editable=False)
 
@@ -558,7 +657,7 @@ class LeiHistorico(models.Model):
     def __str__(self):
         return f"{self.lei.nome} - Alteração de {self.situacao_anterior} para {self.situacao_nova} em {self.data_alteracao}"
     
-# 7 Capacitados - OK
+# ORGANIZAÇÕES CAPACITADAS
 class Organizacao(models.Model):
     nome = models.CharField(max_length=100)
 
@@ -568,6 +667,7 @@ class Organizacao(models.Model):
 class Capacitados(models.Model):
     atividade_registro = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE, default=1)
     indicador = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     organizacoes = models.ManyToManyField(Organizacao, related_name='capacitados')
     total_organizacoes = models.PositiveIntegerField(default=0, editable=False)
     foco_capacitacao = models.CharField(max_length=50, choices=[
@@ -588,10 +688,11 @@ class Capacitados(models.Model):
     def __str__(self):
         return f"{self.atividade_registro} - {self.total_organizacoes} organizações - {self.foco_capacitacao}"
     
-# 8 aplicação - OK
+# APLICAÇÃO
 class Aplicacao(models.Model):
     atividade_registro = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE)
     indicador = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     total_pessoas = models.PositiveIntegerField()
     homens = models.PositiveIntegerField()
     mulheres = models.PositiveIntegerField()
@@ -600,7 +701,7 @@ class Aplicacao(models.Model):
     def __str__(self):
         return f"Aplicação - Total: {self.total_pessoas}"
     
-# 9 Planos APs - OK
+# PLANOS
 class Plano(models.Model):
     TIPO_CHOICES = [
         ('PGTA', 'PGTA'),
@@ -618,27 +719,47 @@ class Plano(models.Model):
     nome = models.CharField(max_length=255)
     tipo = models.CharField(max_length=255, choices=TIPO_CHOICES)
     situacao = models.CharField(max_length=255, choices=SITUACAO_CHOICES)
+    tis = models.ManyToManyField(TIs, related_name='planos', blank=True,
+                                  verbose_name='Terras Indígenas')
 
     def __str__(self):
         return f"{self.nome} - {self.tipo} - {self.situacao}"
 
 class Planos(models.Model):
-    atividade_registro = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE, default=1)
+    atividade_registro = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE)
     indicador = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
-    planos = models.ManyToManyField(Plano, related_name='planos')
-    total_planos = models.PositiveIntegerField(default=0, editable=False)
+    plano = models.ForeignKey(
+        'Plano', on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='registros',
+        verbose_name='Plano',
+    )
+    situacao_anterior = models.CharField(
+        max_length=255, choices=Plano.SITUACAO_CHOICES,
+        blank=True, editable=False
+    )
+    situacao_nova = models.CharField(
+        max_length=255, choices=Plano.SITUACAO_CHOICES,
+        default='em desenvolvimento'
+    )
 
     def save(self, *args, **kwargs):
-        # Evitar contar planos antes que a instância tenha um ID
-        if self.pk is None:
-            super().save(*args, **kwargs)
-
-        # Atualiza o campo `total_planos` com a contagem de planos selecionados
-        self.total_planos = self.planos.count()
+        plano = self.plano
+        if plano and not self.pk:  # apenas na criação
+            self.situacao_anterior = plano.situacao
+            if plano.situacao != self.situacao_nova:
+                PlanoHistorico.objects.create(
+                    plano=plano,
+                    situacao_anterior=plano.situacao,
+                    situacao_nova=self.situacao_nova,
+                    usuario=str(self.atividade_registro.equipe_projeto.equipe.nome)
+                )
+                plano.situacao = self.situacao_nova
+                plano.save(update_fields=['situacao'])
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.atividade_registro} - {self.total_planos} planos"
+        nome = self.plano.nome if self.plano else '?'
+        return f"{self.atividade_registro} — {nome}: {self.situacao_anterior} → {self.situacao_nova}"
 
 
 class PlanoHistorico(models.Model):
@@ -651,7 +772,7 @@ class PlanoHistorico(models.Model):
     def __str__(self):
         return f"{self.plano.nome} - Alteração de {self.situacao_anterior} para {self.situacao_nova} em {self.data_alteracao}"
     
-# 10 Parcerias - OK
+# PARCERIAS
 class Parceria(models.Model):
     nome = models.CharField(max_length=255)
     tipo = models.CharField(max_length=255)
@@ -662,6 +783,7 @@ class Parceria(models.Model):
 class Parcerias(models.Model):
     atividade_registro = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE)
     indicador = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     parcerias = models.ManyToManyField(Parceria, related_name='parcerias')
     total_parcerias = models.PositiveIntegerField(default=0, editable=False)
 
@@ -674,11 +796,12 @@ class Parcerias(models.Model):
     def __str__(self):
         return f"{self.atividade_registro} - {self.total_parcerias} parcerias"
     
-# 11 mobilizados - OK
+# MOBILIZADOS
 
 class Mobilizados(models.Model):
     atividade_registro = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE)
     indicador = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     valor_mobilizado = models.DecimalField(max_digits=12, decimal_places=2)
     tipo_apoio = models.CharField(max_length=255, choices=[
         ('Contribuição em dinheiro', 'Contribuição em dinheiro'),
@@ -703,10 +826,8 @@ class Mobilizados(models.Model):
 
     def __str__(self):
         return f"Mobilizado - Valor: {self.valor_mobilizado}"
-    
-# 12 beneficios PPPs - N/A
 
-# 13 produtos - OK
+# PRODUTOS
 class Produto(models.Model):
     nome = models.CharField(max_length=100)
 
@@ -716,6 +837,7 @@ class Produto(models.Model):
 class Produtos(models.Model):
     atividade_registro = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE, default=1)
     indicador = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     produtos = models.ManyToManyField(Produto, related_name='produtos')
     total_produtos = models.PositiveIntegerField(default=0, editable=False)
 
@@ -728,7 +850,7 @@ class Produtos(models.Model):
     def __str__(self):
         return f"{self.atividade_registro} - {self.total_produtos} produtos"
     
-# 14 contratos - OK
+# CONTRATOS
 class Contrato(models.Model):
     ESTADO_CHOICES = [
         ('alinhamento_realizado', 'Alinhamento Realizado'),
@@ -747,11 +869,12 @@ class Contrato(models.Model):
 class Contratos(models.Model):
     atividade_registro = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE)
     indicador = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     contratos = models.ManyToManyField(Contrato, related_name='contratos_registro')
 
     def __str__(self):
         return f"{self.atividade_registro} - {self.contratos.count()} contratos"
-# 15 modelos
+# MODELOS E OUTROS REGISTROS
 class Modelo(models.Model):
     nome = models.CharField(max_length=255)
 
@@ -783,6 +906,7 @@ class AtividadeRegistroModelo(models.Model):
     def __str__(self):
         return f"{self.atividade_registro} - {self.modelo} - {self.status}"
 
+# FORMAÇÃO INDÍGENA
 class FormacaoIndigena(models.Model):
     formacao = models.CharField(max_length=255)
     indigena = models.ForeignKey(Indigena, on_delete=models.CASCADE)
@@ -790,8 +914,9 @@ class FormacaoIndigena(models.Model):
     def __str__(self):
         return self.formacao
 
+# POLÍTICA PÚBLICA INDÍGENA
 
-# FUNAI
+## FUNAI
 
 class CR(models.Model):
     nome = models.CharField(max_length=255)
@@ -810,7 +935,7 @@ class CTL(models.Model):
         return self.nome
 
 
-# SAÚDE INDÍGENA
+## SAÚDE INDÍGENA
 
 class DSEI(models.Model):
     nome = models.CharField(max_length=255)
@@ -853,7 +978,7 @@ class AIS(models.Model):
         return self.nome
 
 
-# EDUCAÇÃO INDÍGENA
+## EDUCAÇÃO INDÍGENA
 
 class Escola(models.Model):
     nome = models.CharField(max_length=255)

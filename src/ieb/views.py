@@ -5,7 +5,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.contrib import messages
 from .forms import AtividadeRegistroForm
-from .models import Programa, Projeto, Componente, Atividade, EquipeProjeto, Indicador, Meta, AtividadeRegistro, AtividadeRegistroFoto, AtividadeRegistroListaPresenca, Treinados, Leis, Planos, Capacitados, Organizacao, Parceria, Parcerias, Plano, PlanoHistorico, TIs, AreaDireto, AreaGeral, AreaRestrito, Produtos, Produto, Contrato, Contratos, Lei, LeiHistorico, Aplicacao, Mobilizados, Modelo, AtividadeRegistroModelo
+from .models import Programa, Projeto, Componente, Atividade, EquipeProjeto, Indicador, IndicadorFinanciador, Meta, AtividadeRegistro, AtividadeRegistroFoto, AtividadeRegistroListaPresenca, Treinados, Leis, Planos, Capacitados, Organizacao, Parceria, Parcerias, Plano, PlanoHistorico, TIs, AreaDireto, AreaGeral, AreaRestrito, Produtos, Produto, Contrato, Contratos, Lei, LeiHistorico, Aplicacao, Mobilizados, Modelo, AtividadeRegistroModelo
 from django.views.decorators.csrf import csrf_exempt
 import unicodedata
 import re
@@ -334,7 +334,8 @@ def __atividade_registro_view_original(request):  # mantido apenas como referên
             {"name": "leis", "type": "checkbox", "label": "Leis", "options": leis_options}
         ],
         "planos": [
-            {"name": "plano", "type": "checkbox", "label": "Planos", "options": planos_options}
+            {"name": "situacao_nova", "type": "select", "label": "Situação após esta atividade",
+             "options": [{"value": s, "label": l} for s, l in Plano.SITUACAO_CHOICES]},
         ],
         "capacitados": [
             {"name": "organizacoes", "type": "checkbox", "label": "Organizações", "options": organizacoes_options},
@@ -465,15 +466,40 @@ def load_indicadores(request):
     atividade_id = request.GET.get('atividade')
     projeto_id = request.GET.get('projeto')
 
-    qs = Indicador.objects.all()
+    # Indicadores base
+    base_qs = Indicador.objects.all()
     if projeto_id:
-        # ProjetoIndicador é o mecanismo canônico de vínculo Projeto↔Indicador
-        qs = qs.filter(projeto_indicadores__projeto_id=projeto_id)
+        base_qs = base_qs.filter(projeto_indicadores__projeto_id=projeto_id)
     if atividade_id:
-        # Apenas indicadores com Meta definida para esta atividade
-        qs = qs.filter(meta__atividade_id=atividade_id)
+        base_qs = base_qs.filter(meta__atividade_id=atividade_id)
 
-    data = [{'id': i.id, 'nome': i.nome, 'tipo': i.tipo} for i in qs.distinct()]
+    # Indicadores de financiador
+    fin_qs = IndicadorFinanciador.objects.all()
+    if projeto_id:
+        fin_qs = fin_qs.filter(projeto_indicadores_fin__projeto_id=projeto_id)
+    if atividade_id:
+        fin_qs = fin_qs.filter(metas__atividade_id=atividade_id)
+
+    planos_qs = Plano.objects.all()
+    if projeto_id:
+        planos_qs = planos_qs.filter(tis__projetoti__projeto_id=projeto_id).distinct()
+    available_plans = list(planos_qs.values('id', 'nome', 'situacao', 'tipo'))
+
+    data = [
+        {
+            'id': i.id, 'nome': i.nome, 'tipo': i.tipo,
+            'available_plans': available_plans if i.tipo == 'planos' else None,
+            'financiador_nome': None, 'is_fin': False,
+        }
+        for i in base_qs.distinct()
+    ] + [
+        {
+            'id': i.id, 'nome': i.nome, 'tipo': i.tipo,
+            'available_plans': None,
+            'financiador_nome': i.financiador.sigla, 'is_fin': True,
+        }
+        for i in fin_qs.select_related('financiador').distinct()
+    ]
     return JsonResponse(data, safe=False)
 
 def atividade_registro_detalhe_view(request, pk):
@@ -486,7 +512,7 @@ def atividade_registro_detalhe_view(request, pk):
         'treinados': Treinados.objects.filter(atividade_registro=atividade_registro).first(),
         'capacitados': Capacitados.objects.filter(atividade_registro=atividade_registro).first(),
         'parcerias': Parcerias.objects.filter(atividade_registro=atividade_registro).first(),
-        'planos': Planos.objects.filter(atividade_registro=atividade_registro).first(),
+        'planos': Planos.objects.filter(atividade_registro=atividade_registro).select_related('plano'),
         'area_restrito': AreaRestrito.objects.filter(atividade_registro=atividade_registro).first(),
         'area_direto': AreaDireto.objects.filter(atividade_registro=atividade_registro).first(),
         'area_geral': AreaGeral.objects.filter(atividade_registro=atividade_registro).first(),
@@ -734,7 +760,7 @@ def enviar_email_notificacao(atividade_registro_id, email_organizacao):
         'treinados': Treinados.objects.filter(atividade_registro=atividade_registro).first(),
         'capacitados': Capacitados.objects.filter(atividade_registro=atividade_registro).first(),
         'parcerias': Parcerias.objects.filter(atividade_registro=atividade_registro).first(),
-        'planos': Planos.objects.filter(atividade_registro=atividade_registro).first(),
+        'planos': Planos.objects.filter(atividade_registro=atividade_registro).select_related('plano'),
         'area_restrito': AreaRestrito.objects.filter(atividade_registro=atividade_registro).first(),
         'area_direto': AreaDireto.objects.filter(atividade_registro=atividade_registro).first(),
         'area_geral': AreaGeral.objects.filter(atividade_registro=atividade_registro).first(),
@@ -832,8 +858,8 @@ def _atividade_registro_process(request, template='atividade_registro_form.html'
                     AtividadeRegistroListaPresenca.objects.create(atividade_registro=atividade_registro, arquivo=lista)
 
                 # Bug C fix: one dict per indicador_id (not one shared dict per tipo)
-                treinados_map    = {}  # {id: {total_pessoas, homens, mulheres, jovens, foco_treinamento}}
-                planos_map       = {}  # {id: {planos: [ids]}}
+                treinados_map    = {}  # {id: {...}}
+                planos_map       = {}  # {id: {situacao_nova: str}}
                 capacitados_map  = {}  # {id: {organizacoes: [], foco_capacitacao}}
                 parcerias_map    = {}  # {id: {parcerias: [ids]}}
                 area_geral_map   = {}  # {id: {tis: [ids]}}
@@ -845,57 +871,94 @@ def _atividade_registro_process(request, template='atividade_registro_form.html'
                 aplicacao_map    = {}  # {id: {total_pessoas, homens, mulheres, jovens}}
                 mobilizados_map  = {}  # {id: {valor_mobilizado, tipo_apoio, fonte_apoio}}
                 modelos_map      = {}  # {id: {modelos: [], status: {}}}
-                indicadores_por_id = {}  # {id: Indicador obj} — para Bug D fix
+                indicadores_por_id = {}  # {id: Indicador obj} — Bug D fix
+
+                # Mapas paralelos para IndicadorFinanciador (prefixo fin_)
+                fin_treinados_map    = {}
+                fin_capacitados_map  = {}
+                fin_parcerias_map    = {}
+                fin_area_geral_map   = {}
+                fin_area_direto_map  = {}
+                fin_area_restrito_map = {}
+                fin_produtos_map     = {}
+                fin_contratos_map    = {}
+                fin_leis_map         = {}
+                fin_aplicacao_map    = {}
+                fin_mobilizados_map  = {}
+                indicadores_fin_por_id = {}  # {id: IndicadorFinanciador obj}
 
                 for key in request.POST:
                     if not key.startswith('indicadores_'):
                         continue
+
+                    is_fin = key.startswith('indicadores_fin_')
                     try:
-                        parts = key.split('_', 2)
-                        indicador_id = int(parts[1])
-                        field_name = parts[2]
-                        indicador = Indicador.objects.get(id=indicador_id)
-                    except (ValueError, IndexError, Indicador.DoesNotExist) as e:
+                        if is_fin:
+                            parts = key.split('_', 3)   # ['indicadores', 'fin', '{id}', '{field}']
+                            indicador_fin_id = int(parts[2])
+                            field_name = parts[3]
+                            ind_fin = IndicadorFinanciador.objects.get(id=indicador_fin_id)
+                            indicadores_fin_por_id[indicador_fin_id] = ind_fin
+                            tipo = ind_fin.tipo
+                        else:
+                            parts = key.split('_', 2)
+                            indicador_id = int(parts[1])
+                            field_name = parts[2]
+                            indicador = Indicador.objects.get(id=indicador_id)
+                            indicadores_por_id[indicador_id] = indicador
+                            tipo = indicador.tipo
+                    except (ValueError, IndexError, Indicador.DoesNotExist, IndicadorFinanciador.DoesNotExist) as e:
                         print(f"Erro ao processar o indicador {key}: {e}")
                         continue
 
-                    indicadores_por_id[indicador_id] = indicador
-                    tipo = indicador.tipo
                     value = request.POST[key]
+                    _id = indicador_fin_id if is_fin else indicador_id
+                    _tm    = fin_treinados_map    if is_fin else treinados_map
+                    _cm    = fin_capacitados_map  if is_fin else capacitados_map
+                    _pm    = fin_parcerias_map    if is_fin else parcerias_map
+                    _agm   = fin_area_geral_map   if is_fin else area_geral_map
+                    _adm   = fin_area_direto_map  if is_fin else area_direto_map
+                    _arm   = fin_area_restrito_map if is_fin else area_restrito_map
+                    _prom  = fin_produtos_map     if is_fin else produtos_map
+                    _conm  = fin_contratos_map    if is_fin else contratos_map
+                    _lm    = fin_leis_map         if is_fin else leis_map
+                    _apm   = fin_aplicacao_map    if is_fin else aplicacao_map
+                    _mobm  = fin_mobilizados_map  if is_fin else mobilizados_map
 
                     if tipo == 'treinados':
-                        d = treinados_map.setdefault(indicador_id, {'total_pessoas': None, 'homens': None, 'mulheres': None, 'jovens': None, 'foco_treinamento': None})
+                        d = _tm.setdefault(_id, {'total_pessoas': None, 'homens': None, 'mulheres': None, 'jovens': None, 'foco_treinamento': None})
                         if field_name == 'total_pessoas': d['total_pessoas'] = int(value)
                         elif field_name == 'homens': d['homens'] = int(value)
                         elif field_name == 'mulheres': d['mulheres'] = int(value)
                         elif field_name == 'jovens': d['jovens'] = int(value)
                         elif field_name == 'foco_treinamento': d['foco_treinamento'] = value
 
-                    elif tipo == 'planos':
-                        # Bug B fix: collect plano IDs for Planos (plural) M2M
-                        d = planos_map.setdefault(indicador_id, {'planos': []})
-                        if field_name == 'plano':
-                            d['planos'].extend(request.POST.getlist(key))
+                    elif tipo == 'planos' and not is_fin:
+                        d = planos_map.setdefault(_id, {})
+                        if field_name == 'situacao_nova':
+                            d['situacao_nova'] = value
+                        elif field_name == 'plano_id':
+                            d['plano_id'] = int(value)
 
                     elif tipo == 'capacitados':
-                        d = capacitados_map.setdefault(indicador_id, {'organizacoes': [], 'foco_capacitacao': None})
+                        d = _cm.setdefault(_id, {'organizacoes': [], 'foco_capacitacao': None})
                         if field_name == 'organizacoes': d['organizacoes'].extend(request.POST.getlist(key))
                         elif field_name == 'foco_capacitacao': d['foco_capacitacao'] = value
 
                     elif tipo == 'parcerias':
-                        d = parcerias_map.setdefault(indicador_id, {'parcerias': []})
+                        d = _pm.setdefault(_id, {'parcerias': []})
                         if field_name == 'parcerias': d['parcerias'].extend(request.POST.getlist(key))
 
                     elif tipo == 'area_geral':
-                        d = area_geral_map.setdefault(indicador_id, {'tis': []})
+                        d = _agm.setdefault(_id, {'tis': []})
                         if field_name == 'tis': d['tis'].extend(request.POST.getlist(key))
 
                     elif tipo == 'area_direto':
-                        d = area_direto_map.setdefault(indicador_id, {'tis': []})
+                        d = _adm.setdefault(_id, {'tis': []})
                         if field_name == 'tis': d['tis'].extend(request.POST.getlist(key))
 
                     elif tipo == 'area_restrito':
-                        d = area_restrito_map.setdefault(indicador_id, {'ti': None, 'area_em_ha': None})
+                        d = _arm.setdefault(_id, {'ti': None, 'area_em_ha': None})
                         if field_name == 'ti': d['ti'] = value
                         elif field_name == 'area_em_ha':
                             valor = value.replace(',', '.')
@@ -905,32 +968,32 @@ def _atividade_registro_process(request, template='atividade_registro_form.html'
                                 d['area_em_ha'] = None
 
                     elif tipo == 'produtos':
-                        d = produtos_map.setdefault(indicador_id, {'produtos': []})
+                        d = _prom.setdefault(_id, {'produtos': []})
                         if field_name == 'produtos': d['produtos'].extend(request.POST.getlist(key))
 
                     elif tipo == 'contratos':
-                        d = contratos_map.setdefault(indicador_id, {'contratos': []})
+                        d = _conm.setdefault(_id, {'contratos': []})
                         if field_name == 'contratos': d['contratos'].extend(request.POST.getlist(key))
 
                     elif tipo == 'leis_politicas':
-                        d = leis_map.setdefault(indicador_id, {'leis': []})
+                        d = _lm.setdefault(_id, {'leis': []})
                         if field_name == 'leis': d['leis'].extend(request.POST.getlist(key))
 
                     elif tipo == 'aplicacao':
-                        d = aplicacao_map.setdefault(indicador_id, {'total_pessoas': None, 'homens': None, 'mulheres': None, 'jovens': None})
+                        d = _apm.setdefault(_id, {'total_pessoas': None, 'homens': None, 'mulheres': None, 'jovens': None})
                         if field_name == 'total_pessoas': d['total_pessoas'] = int(value)
                         elif field_name == 'homens': d['homens'] = int(value)
                         elif field_name == 'mulheres': d['mulheres'] = int(value)
                         elif field_name == 'jovens': d['jovens'] = int(value)
 
                     elif tipo == 'mobilizados':
-                        d = mobilizados_map.setdefault(indicador_id, {'valor_mobilizado': None, 'tipo_apoio': None, 'fonte_apoio': None})
+                        d = _mobm.setdefault(_id, {'valor_mobilizado': None, 'tipo_apoio': None, 'fonte_apoio': None})
                         if field_name == 'valor_mobilizado': d['valor_mobilizado'] = value
                         elif field_name == 'tipo_apoio': d['tipo_apoio'] = value
                         elif field_name == 'fonte_apoio': d['fonte_apoio'] = value
 
-                    elif tipo == 'outro':
-                        d = modelos_map.setdefault(indicador_id, {'modelos': [], 'status': {}})
+                    elif tipo == 'outro' and not is_fin:
+                        d = modelos_map.setdefault(_id, {'modelos': [], 'status': {}})
                         if field_name == 'modelos': d['modelos'].extend(request.POST.getlist(key))
                         elif field_name.startswith('status_modelo_'):
                             modelo_id = field_name.split('status_modelo_')[1]
@@ -964,14 +1027,18 @@ def _atividade_registro_process(request, template='atividade_registro_form.html'
                         inst.total_parcerias = len(data['parcerias'])
                         inst.save()
 
-                # Bug B fix: use Planos (plural) model with M2M
                 for ind_id, data in planos_map.items():
                     ind = indicadores_por_id.get(ind_id)
-                    if data['planos']:
-                        inst = Planos(atividade_registro=atividade_registro, indicador=ind)
-                        inst.save()
-                        inst.planos.set(data['planos'])
-                        inst.save()  # Planos.save() auto-updates total_planos
+                    plano_id = data.get('plano_id')
+                    plano = Plano.objects.filter(pk=plano_id).first() if plano_id else None
+                    if data.get('situacao_nova') and plano:
+                        Planos.objects.create(
+                            atividade_registro=atividade_registro,
+                            indicador=ind,
+                            plano=plano,
+                            situacao_nova=data['situacao_nova']
+                        )
+                        # Planos.save() auto-atualiza Plano.situacao + cria PlanoHistorico
 
                 for ind_id, data in area_geral_map.items():
                     ind = indicadores_por_id.get(ind_id)
@@ -1048,6 +1115,93 @@ def _atividade_registro_process(request, template='atividade_registro_form.html'
                                 status=status
                             )
 
+                # Criação de registros de IndicadorFinanciador
+                for fin_id, data in fin_treinados_map.items():
+                    ind_fin = indicadores_fin_por_id.get(fin_id)
+                    if all(v is not None for v in data.values()):
+                        Treinados.objects.create(atividade_registro=atividade_registro, indicador_financiador=ind_fin, **data)
+
+                for fin_id, data in fin_capacitados_map.items():
+                    ind_fin = indicadores_fin_por_id.get(fin_id)
+                    if data['organizacoes'] and data['foco_capacitacao']:
+                        inst = Capacitados(atividade_registro=atividade_registro, indicador_financiador=ind_fin, foco_capacitacao=data['foco_capacitacao'])
+                        inst.save()
+                        inst.organizacoes.set(data['organizacoes'])
+                        inst.total_organizacoes = inst.organizacoes.count()
+                        inst.save()
+
+                for fin_id, data in fin_parcerias_map.items():
+                    ind_fin = indicadores_fin_por_id.get(fin_id)
+                    if data['parcerias']:
+                        inst = Parcerias(atividade_registro=atividade_registro, indicador_financiador=ind_fin)
+                        inst.save()
+                        inst.parcerias.set(data['parcerias'])
+                        inst.total_parcerias = len(data['parcerias'])
+                        inst.save()
+
+                for fin_id, data in fin_area_geral_map.items():
+                    ind_fin = indicadores_fin_por_id.get(fin_id)
+                    if data['tis']:
+                        inst = AreaGeral(atividade_registro=atividade_registro, indicador_financiador=ind_fin)
+                        inst.save()
+                        inst.tis.set(data['tis'])
+                        inst.total_tis = inst.tis.count()
+                        inst.save()
+
+                for fin_id, data in fin_area_direto_map.items():
+                    ind_fin = indicadores_fin_por_id.get(fin_id)
+                    if data['tis']:
+                        inst = AreaDireto(atividade_registro=atividade_registro, indicador_financiador=ind_fin)
+                        inst.save()
+                        inst.tis.set(data['tis'])
+                        inst.total_tis = inst.tis.count()
+                        inst.save()
+
+                for fin_id, data in fin_area_restrito_map.items():
+                    ind_fin = indicadores_fin_por_id.get(fin_id)
+                    if data['ti'] and data['area_em_ha']:
+                        AreaRestrito.objects.create(
+                            atividade_registro=atividade_registro,
+                            indicador_financiador=ind_fin,
+                            ti_id=data['ti'],
+                            area_em_ha=data['area_em_ha']
+                        )
+
+                for fin_id, data in fin_produtos_map.items():
+                    ind_fin = indicadores_fin_por_id.get(fin_id)
+                    if data['produtos']:
+                        inst = Produtos(atividade_registro=atividade_registro, indicador_financiador=ind_fin)
+                        inst.save()
+                        inst.produtos.set(data['produtos'])
+                        inst.total_produtos = inst.produtos.count()
+                        inst.save()
+
+                for fin_id, data in fin_contratos_map.items():
+                    ind_fin = indicadores_fin_por_id.get(fin_id)
+                    if data['contratos']:
+                        inst = Contratos(atividade_registro=atividade_registro, indicador_financiador=ind_fin)
+                        inst.save()
+                        inst.contratos.set(data['contratos'])
+                        inst.save()
+
+                for fin_id, data in fin_leis_map.items():
+                    ind_fin = indicadores_fin_por_id.get(fin_id)
+                    if data['leis']:
+                        inst = Leis(atividade_registro=atividade_registro, indicador_financiador=ind_fin)
+                        inst.save()
+                        inst.leis.set(data['leis'])
+                        inst.save()
+
+                for fin_id, data in fin_aplicacao_map.items():
+                    ind_fin = indicadores_fin_por_id.get(fin_id)
+                    if all(v is not None for v in data.values()):
+                        Aplicacao.objects.create(atividade_registro=atividade_registro, indicador_financiador=ind_fin, **data)
+
+                for fin_id, data in fin_mobilizados_map.items():
+                    ind_fin = indicadores_fin_por_id.get(fin_id)
+                    if data['valor_mobilizado'] and data['tipo_apoio'] and data['fonte_apoio']:
+                        Mobilizados.objects.create(atividade_registro=atividade_registro, indicador_financiador=ind_fin, **data)
+
                 email_organizacao = form.cleaned_data.get('email_organizacao')
 
             # Email notification outside the atomic block (side effect)
@@ -1087,7 +1241,8 @@ def _atividade_registro_process(request, template='atividade_registro_form.html'
             {"name": "leis", "type": "checkbox", "label": "Leis", "options": [{'value': l.id, 'label': str(l)} for l in leis]},
         ],
         "planos": [
-            {"name": "plano", "type": "checkbox", "label": "Planos", "options": [{'value': p.id, 'label': str(p)} for p in planos]},
+            {"name": "situacao_nova", "type": "select", "label": "Situação após esta atividade",
+             "options": [{"value": s, "label": l} for s, l in Plano.SITUACAO_CHOICES]},
         ],
         "capacitados": [
             {"name": "organizacoes", "type": "checkbox", "label": "Organizações", "options": [{'value': o.id, 'label': o.nome} for o in organizacoes]},

@@ -205,27 +205,66 @@ document.addEventListener('DOMContentLoaded', function () {
         const header = document.createElement('div');
         header.className = 'indicator-card-header';
         header.innerHTML = `<h3>${item.nome}</h3>`;
+        if (item.financiador_nome) {
+            const badge = document.createElement('span');
+            badge.className = 'indicator-financiador-badge';
+            badge.textContent = item.financiador_nome;
+            header.appendChild(badge);
+        }
         card.appendChild(header);
 
         const body = document.createElement('div');
         body.className = 'indicator-card-body';
 
+        const prefix = item.is_fin ? `indicadores_fin_${item.id}` : `indicadores_${item.id}`;
         const numericFields = config.filter(f => f.type === 'number');
         const otherFields   = config.filter(f => f.type !== 'number');
+
+        // Seletor de plano para indicadores tipo 'planos'
+        if (item.tipo === 'planos' && Array.isArray(item.available_plans)) {
+            const planoWrapper = document.createElement('div');
+            planoWrapper.className = 'field-group';
+            const planoLabel = document.createElement('label');
+            planoLabel.textContent = 'Plano';
+            const planoSelect = document.createElement('select');
+            planoSelect.name = `${prefix}_plano_id`;
+            planoSelect.required = true;
+            planoSelect.appendChild(new Option('-- Selecione o plano --', ''));
+            item.available_plans.forEach(p => {
+                planoSelect.appendChild(new Option(`${p.nome} (${p.situacao})`, p.id));
+            });
+            planoWrapper.appendChild(planoLabel);
+            planoWrapper.appendChild(planoSelect);
+            body.appendChild(planoWrapper);
+
+            const sitWrapper = document.createElement('div');
+            sitWrapper.className = 'field-group';
+            const sitLabel = document.createElement('label');
+            sitLabel.textContent = 'Nova situação';
+            const sitSelect = document.createElement('select');
+            sitSelect.name = `${prefix}_situacao_nova`;
+            sitSelect.required = true;
+            [['em desenvolvimento', 'Em Desenvolvimento'], ['proposto', 'Proposto'], ['adotado', 'Adotado'], ['implementado', 'Implementado']].forEach(([val, label]) => {
+                sitSelect.appendChild(new Option(label, val));
+            });
+            sitWrapper.appendChild(sitLabel);
+            sitWrapper.appendChild(sitSelect);
+            body.appendChild(sitWrapper);
+        }
 
         // Campos numéricos em grid
         if (numericFields.length > 0) {
             const grid = document.createElement('div');
             grid.className = 'numeric-grid';
             numericFields.forEach(field => {
-                grid.appendChild(renderField(field, `indicadores_${item.id}_${field.name}`));
+                grid.appendChild(renderField(field, `${prefix}_${field.name}`));
             });
             body.appendChild(grid);
         }
 
         // Demais campos
         otherFields.forEach(field => {
-            body.appendChild(renderField(field, `indicadores_${item.id}_${field.name}`));
+            body.appendChild(renderField(field, `${prefix}_${field.name}`));
         });
 
         card.appendChild(body);

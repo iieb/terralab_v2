@@ -321,10 +321,8 @@
         {% endif %}
 
         {% if planos %}
-        <p style="font-weight:bold;color:#8c4a10;margin:6px 0 2px;">Planos ({{ planos.total_planos }})</p>
-        {% if planos.planos.exists %}
-        <ul class="plain">{% for p in planos.planos.all %}<li>{{ p.nome }} — {{ p.situacao }}</li>{% endfor %}</ul>
-        {% endif %}
+        <p style="font-weight:bold;color:#8c4a10;margin:6px 0 2px;">Planos</p>
+        <ul class="plain">{% for p in planos %}{% if p.plano %}<li>{{ p.plano.nome }} ({{ p.plano.tipo }}) — {{ p.situacao_anterior }} → {{ p.situacao_nova }}</li>{% endif %}{% endfor %}</ul>
         {% endif %}
 
         {% if area_geral %}
