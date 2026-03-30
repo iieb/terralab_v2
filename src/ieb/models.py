@@ -315,20 +315,30 @@ class AtividadeTI(models.Model):
 # GESTÃO DE PROJETOS - INDICADORES/METAS/REGISTROS
 
 INDICADOR_TIPO_CHOICES = [
-    ('area_restrito', 'Área Restrita'),
-    ('area_direto', 'Área Direta'),
-    ('area_geral', 'Área Geral'),
-    ('treinados', 'Pessoas Treinadas'),
-    ('leis_politicas', 'Leis e Políticas'),
-    ('capacitados', 'Organizações Capacitadas'),
-    ('aplicacao', 'Aplicação'),
-    ('planos', 'Planos'),
-    ('parcerias', 'Parcerias'),
-    ('mobilizados', 'Recursos Mobilizados'),
-    ('produtos', 'Produtos'),
-    ('contratos', 'Contratos'),
-    ('outro', 'Outro'),
+    ('pessoas',           'Pessoas'),
+    ('organizacoes',      'Organizações'),
+    ('area',              'Área'),
+    ('areas_protegidas',  'Áreas Protegidas'),
+    ('eventos',           'Eventos'),
+    ('planos',            'Planos'),
+    ('parcerias',         'Parcerias'),
+    ('mobilizados',       'Recursos Mobilizados'),
+    ('produtos',          'Produtos'),
+    ('contratos',         'Contratos'),
+    ('redes',             'Redes'),
+    ('pequenos_projetos', 'Pequenos Projetos'),
+    ('fundos',            'Fundos'),
+    ('leis_politicas',    'Leis e Políticas'),
+    ('outro',             'Outro'),
 ]
+
+SCORE_PLANO = {
+    'em desenvolvimento': 1,
+    'proposto':           2,
+    'adotado':            3,
+    'em implementacao':   4,
+    'implementado':       5,
+}
 
 
 class Indicador(models.Model):
@@ -413,8 +423,7 @@ class Meta(models.Model):
             ).select_related('plano').order_by('-pk').first()
             if not ultimo or not ultimo.plano:
                 return 0
-            SCORE = {'em desenvolvimento': 1, 'proposto': 2, 'adotado': 3, 'implementado': 4}
-            return SCORE.get(ultimo.plano.situacao, 0)
+            return SCORE_PLANO.get(ultimo.plano.situacao, 0)
         return 0
 
     @property
@@ -464,6 +473,14 @@ class MetaFinanciador(models.Model):
                 atividade_registro__in=registros,
                 indicador_financiador=self.indicador_financiador
             ).count()
+        elif tipo == 'planos':
+            ultimo = Planos.objects.filter(
+                atividade_registro__atividade=self.atividade,
+                indicador_financiador=self.indicador_financiador
+            ).select_related('plano').order_by('-pk').first()
+            if not ultimo or not ultimo.plano:
+                return 0
+            return SCORE_PLANO.get(ultimo.plano.situacao, 0)
         return 0
 
     @property
@@ -704,16 +721,20 @@ class Aplicacao(models.Model):
 # PLANOS
 class Plano(models.Model):
     TIPO_CHOICES = [
-        ('PGTA', 'PGTA'),
+        ('PGTA',                   'PGTA'),
+        ('Plano de Adaptação',     'Plano de Adaptação'),
+        ('Plano de Manejo',        'Plano de Manejo'),
         ('Plano de Enfrentamento', 'Plano de Enfrentamento'),
-        ('Plano de Diagnóstico', 'Plano de Diagnóstico')
+        ('Plano de Diagnóstico',   'Plano de Diagnóstico'),
+        ('Outro',                  'Outro'),
     ]
-    
+
     SITUACAO_CHOICES = [
         ('em desenvolvimento', 'Em Desenvolvimento'),
-        ('proposto', 'Proposto'),
-        ('adotado', 'Adotado'),
-        ('implementado', 'Implementado')
+        ('proposto',           'Proposto'),
+        ('adotado',            'Adotado'),
+        ('em implementacao',   'Em Implementação'),
+        ('implementado',       'Implementado'),
     ]
 
     nome = models.CharField(max_length=255)
@@ -764,8 +785,8 @@ class Planos(models.Model):
 
 class PlanoHistorico(models.Model):
     plano = models.ForeignKey(Plano, on_delete=models.CASCADE)
-    situacao_anterior = models.CharField(max_length=255, choices=[('em desenvolvimento', 'Em Desenvolvimento'), ('proposto', 'Proposto'), ('adotado', 'Adotado'), ('implementado', 'Implementado')])
-    situacao_nova = models.CharField(max_length=255, choices=[('em desenvolvimento', 'Em Desenvolvimento'), ('proposto', 'Proposto'), ('adotado', 'Adotado'), ('implementado', 'Implementado')])
+    situacao_anterior = models.CharField(max_length=255, choices=Plano.SITUACAO_CHOICES)
+    situacao_nova = models.CharField(max_length=255, choices=Plano.SITUACAO_CHOICES)
     data_alteracao = models.DateTimeField(auto_now_add=True)
     usuario = models.CharField(max_length=255)  # Ou usar um ForeignKey para um modelo de usuário, se necessário
 
