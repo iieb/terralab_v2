@@ -350,6 +350,40 @@ class Indicador(models.Model):
     reporte = models.CharField(max_length=255)
     tipo = models.CharField(max_length=30, choices=INDICADOR_TIPO_CHOICES, default='outro')
 
+    # Desagregações — Pessoas
+    desag_homens            = models.BooleanField(default=False, verbose_name='Homens')
+    desag_mulheres          = models.BooleanField(default=False, verbose_name='Mulheres')
+    desag_jovens            = models.BooleanField(default=False, verbose_name='Jovens')
+    desag_pct               = models.BooleanField(default=False, verbose_name='PCT (grupo)')
+    desag_pct_indigenas     = models.BooleanField(default=False, verbose_name='PCT — Indígenas')
+    desag_pct_extrativistas = models.BooleanField(default=False, verbose_name='PCT — Extrativistas')
+    desag_pct_quilombolas   = models.BooleanField(default=False, verbose_name='PCT — Quilombolas')
+    desag_servidor_publico  = models.BooleanField(default=False, verbose_name='Servidor Público')
+    tem_foco                = models.BooleanField(default=False, verbose_name='Coletar foco da ação')
+
+    # Desagregações — Organizações
+    desag_org_sc            = models.BooleanField(default=False, verbose_name='Sociedade Civil')
+    desag_org_indigenas     = models.BooleanField(default=False, verbose_name='Org. Indígenas')
+    desag_org_extrativistas = models.BooleanField(default=False, verbose_name='Org. Extrativistas')
+
+    # Desagregações — Área (modos)
+    desag_restrito = models.BooleanField(default=False, verbose_name='Área Restrita (HA manual)')
+    desag_direto   = models.BooleanField(default=False, verbose_name='Área Direta (M2M → soma HA)')
+    desag_indireto = models.BooleanField(default=False, verbose_name='Área Indireta (M2M → soma HA)')
+
+    # Desagregações — Seletores de área protegida (área direto/indireto + áreas protegidas)
+    desag_ti  = models.BooleanField(default=False, verbose_name='Terra Indígena (TI)')
+    desag_uc  = models.BooleanField(default=False, verbose_name='Unidade de Conservação (UC)')
+    desag_pa  = models.BooleanField(default=False, verbose_name='Projeto de Assentamento (PA)')
+    desag_tuc = models.BooleanField(default=False, verbose_name='Território de Uso Comum (TUC)')
+
+    # Desagregações — Eventos
+    desag_formacoes     = models.BooleanField(default=False, verbose_name='Formações')
+    desag_seminarios    = models.BooleanField(default=False, verbose_name='Seminários')
+    desag_encontros     = models.BooleanField(default=False, verbose_name='Encontros')
+    desag_reunioes      = models.BooleanField(default=False, verbose_name='Reuniões')
+    desag_participantes = models.BooleanField(default=False, verbose_name='Registrar participantes')
+
     def __str__(self):
         return self.nome
 
@@ -365,6 +399,40 @@ class IndicadorFinanciador(models.Model):
     descricao = models.CharField(max_length=255, blank=True)
     reporte   = models.CharField(max_length=255, blank=True)
     tipo      = models.CharField(max_length=30, choices=INDICADOR_TIPO_CHOICES, default='outro')
+
+    # Desagregações — Pessoas
+    desag_homens            = models.BooleanField(default=False, verbose_name='Homens')
+    desag_mulheres          = models.BooleanField(default=False, verbose_name='Mulheres')
+    desag_jovens            = models.BooleanField(default=False, verbose_name='Jovens')
+    desag_pct               = models.BooleanField(default=False, verbose_name='PCT (grupo)')
+    desag_pct_indigenas     = models.BooleanField(default=False, verbose_name='PCT — Indígenas')
+    desag_pct_extrativistas = models.BooleanField(default=False, verbose_name='PCT — Extrativistas')
+    desag_pct_quilombolas   = models.BooleanField(default=False, verbose_name='PCT — Quilombolas')
+    desag_servidor_publico  = models.BooleanField(default=False, verbose_name='Servidor Público')
+    tem_foco                = models.BooleanField(default=False, verbose_name='Coletar foco da ação')
+
+    # Desagregações — Organizações
+    desag_org_sc            = models.BooleanField(default=False, verbose_name='Sociedade Civil')
+    desag_org_indigenas     = models.BooleanField(default=False, verbose_name='Org. Indígenas')
+    desag_org_extrativistas = models.BooleanField(default=False, verbose_name='Org. Extrativistas')
+
+    # Desagregações — Área (modos)
+    desag_restrito = models.BooleanField(default=False, verbose_name='Área Restrita (HA manual)')
+    desag_direto   = models.BooleanField(default=False, verbose_name='Área Direta (M2M → soma HA)')
+    desag_indireto = models.BooleanField(default=False, verbose_name='Área Indireta (M2M → soma HA)')
+
+    # Desagregações — Seletores de área protegida
+    desag_ti  = models.BooleanField(default=False, verbose_name='Terra Indígena (TI)')
+    desag_uc  = models.BooleanField(default=False, verbose_name='Unidade de Conservação (UC)')
+    desag_pa  = models.BooleanField(default=False, verbose_name='Projeto de Assentamento (PA)')
+    desag_tuc = models.BooleanField(default=False, verbose_name='Território de Uso Comum (TUC)')
+
+    # Desagregações — Eventos
+    desag_formacoes     = models.BooleanField(default=False, verbose_name='Formações')
+    desag_seminarios    = models.BooleanField(default=False, verbose_name='Seminários')
+    desag_encontros     = models.BooleanField(default=False, verbose_name='Encontros')
+    desag_reunioes      = models.BooleanField(default=False, verbose_name='Reuniões')
+    desag_participantes = models.BooleanField(default=False, verbose_name='Registrar participantes')
 
     class Meta:
         verbose_name = 'Indicador de Financiador'

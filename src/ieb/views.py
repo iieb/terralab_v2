@@ -490,18 +490,31 @@ def load_indicadores(request):
         planos_qs = planos_qs.filter(tis__projetoti__projeto_id=projeto_id).distinct()
     available_plans = list(planos_qs.values('id', 'nome', 'situacao', 'tipo'))
 
+    DESAG_FIELDS = [
+        'desag_homens', 'desag_mulheres', 'desag_jovens',
+        'desag_pct', 'desag_pct_indigenas', 'desag_pct_extrativistas', 'desag_pct_quilombolas',
+        'desag_servidor_publico', 'tem_foco',
+        'desag_org_sc', 'desag_org_indigenas', 'desag_org_extrativistas',
+        'desag_restrito', 'desag_direto', 'desag_indireto',
+        'desag_ti', 'desag_uc', 'desag_pa', 'desag_tuc',
+        'desag_formacoes', 'desag_seminarios', 'desag_encontros', 'desag_reunioes',
+        'desag_participantes',
+    ]
+
     data = [
         {
             'id': i.id, 'nome': i.nome, 'tipo': i.tipo,
             'available_plans': available_plans if i.tipo == 'planos' else None,
             'financiador_nome': None, 'is_fin': False,
+            'desagregacoes': {f: getattr(i, f) for f in DESAG_FIELDS},
         }
         for i in base_qs.distinct()
     ] + [
         {
             'id': i.id, 'nome': i.nome, 'tipo': i.tipo,
-            'available_plans': None,
+            'available_plans': available_plans if i.tipo == 'planos' else None,
             'financiador_nome': i.financiador.sigla, 'is_fin': True,
+            'desagregacoes': {f: getattr(i, f) for f in DESAG_FIELDS},
         }
         for i in fin_qs.select_related('financiador').distinct()
     ]

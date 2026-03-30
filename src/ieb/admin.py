@@ -145,6 +145,38 @@ class IndicadorAdmin(admin.ModelAdmin):
     list_display = ('nome', 'codigo', 'tipo', 'reporte')
     list_filter = ('tipo',)
     search_fields = ('nome', 'codigo')
+    fieldsets = (
+        (None, {'fields': ('nome', 'codigo', 'tipo', 'descricao', 'reporte')}),
+        ('Desagregações — Pessoas', {
+            'fields': (
+                'desag_homens', 'desag_mulheres', 'desag_jovens',
+                'desag_pct', 'desag_pct_indigenas', 'desag_pct_extrativistas',
+                'desag_pct_quilombolas', 'desag_servidor_publico', 'tem_foco',
+            ),
+            'classes': ('collapse',),
+        }),
+        ('Desagregações — Organizações', {
+            'fields': ('desag_org_sc', 'desag_org_indigenas', 'desag_org_extrativistas'),
+            'classes': ('collapse',),
+            'description': 'tem_foco acima também se aplica a organizações.',
+        }),
+        ('Desagregações — Área', {
+            'fields': ('desag_restrito', 'desag_direto', 'desag_indireto'),
+            'classes': ('collapse',),
+        }),
+        ('Seletores de Área Protegida', {
+            'fields': ('desag_ti', 'desag_uc', 'desag_pa', 'desag_tuc'),
+            'classes': ('collapse',),
+            'description': 'Usados por tipo=area (modos direto/indireto) e tipo=areas_protegidas.',
+        }),
+        ('Desagregações — Eventos', {
+            'fields': (
+                'desag_formacoes', 'desag_seminarios',
+                'desag_encontros', 'desag_reunioes', 'desag_participantes',
+            ),
+            'classes': ('collapse',),
+        }),
+    )
 
 
 admin.site.register(Componente)
@@ -160,6 +192,38 @@ class IndicadorFinanciadorAdmin(admin.ModelAdmin):
     list_display = ('nome', 'codigo', 'tipo', 'financiador')
     list_filter = ('tipo', 'financiador')
     search_fields = ('nome', 'codigo')
+    fieldsets = (
+        (None, {'fields': ('financiador', 'nome', 'codigo', 'tipo', 'descricao', 'reporte')}),
+        ('Desagregações — Pessoas', {
+            'fields': (
+                'desag_homens', 'desag_mulheres', 'desag_jovens',
+                'desag_pct', 'desag_pct_indigenas', 'desag_pct_extrativistas',
+                'desag_pct_quilombolas', 'desag_servidor_publico', 'tem_foco',
+            ),
+            'classes': ('collapse',),
+        }),
+        ('Desagregações — Organizações', {
+            'fields': ('desag_org_sc', 'desag_org_indigenas', 'desag_org_extrativistas'),
+            'classes': ('collapse',),
+            'description': 'tem_foco acima também se aplica a organizações.',
+        }),
+        ('Desagregações — Área', {
+            'fields': ('desag_restrito', 'desag_direto', 'desag_indireto'),
+            'classes': ('collapse',),
+        }),
+        ('Seletores de Área Protegida', {
+            'fields': ('desag_ti', 'desag_uc', 'desag_pa', 'desag_tuc'),
+            'classes': ('collapse',),
+            'description': 'Usados por tipo=area (modos direto/indireto) e tipo=areas_protegidas.',
+        }),
+        ('Desagregações — Eventos', {
+            'fields': (
+                'desag_formacoes', 'desag_seminarios',
+                'desag_encontros', 'desag_reunioes', 'desag_participantes',
+            ),
+            'classes': ('collapse',),
+        }),
+    )
 admin.site.register(Instituicao)
 admin.site.register(Equipe)
 admin.site.register(EquipeProjeto)
