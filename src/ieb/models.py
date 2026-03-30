@@ -443,11 +443,12 @@ class IndicadorFinanciador(models.Model):
 
 
 class Meta(models.Model):
-    atividade = models.ForeignKey(Atividade, on_delete=models.CASCADE)
-    indicador = models.ForeignKey(Indicador, on_delete=models.CASCADE)
-    base = models.FloatField()
-    meta = models.FloatField()
-    data = models.DateField()
+    atividade   = models.ForeignKey(Atividade, on_delete=models.CASCADE)
+    indicador   = models.ForeignKey(Indicador, on_delete=models.CASCADE)
+    base        = models.FloatField()
+    meta        = models.FloatField()
+    data        = models.DateField(verbose_name='Prazo / Fim do período')
+    data_inicio = models.DateField(null=True, blank=True, verbose_name='Início do período de apuração')
 
     def __str__(self):
         return f"{self.atividade.codigo} - {self.indicador.nome} - {self.base} - {self.meta}"
@@ -457,6 +458,8 @@ class Meta(models.Model):
         """Uso pontual (detalhe de uma Meta). Para listagens, usar anotação na queryset."""
         from django.db.models import Sum
         registros = AtividadeRegistro.objects.filter(atividade=self.atividade)
+        if self.data_inicio:
+            registros = registros.filter(data_inicio__gte=self.data_inicio, data_inicio__lte=self.data)
         tipo = self.indicador.tipo
         SUM_MAP = {
             'pessoas':           (Pessoas,        'total_pessoas'),
@@ -504,9 +507,10 @@ class Meta(models.Model):
 class MetaFinanciador(models.Model):
     atividade             = models.ForeignKey(Atividade, on_delete=models.CASCADE, related_name='metas_financiador')
     indicador_financiador = models.ForeignKey(IndicadorFinanciador, on_delete=models.CASCADE, related_name='metas')
-    base = models.FloatField()
-    meta = models.FloatField()
-    data = models.DateField()
+    base        = models.FloatField()
+    meta        = models.FloatField()
+    data        = models.DateField(verbose_name='Prazo / Fim do período')
+    data_inicio = models.DateField(null=True, blank=True, verbose_name='Início do período de apuração')
 
     def __str__(self):
         return f"{self.atividade.codigo} - {self.indicador_financiador.nome}"
@@ -516,6 +520,8 @@ class MetaFinanciador(models.Model):
         from django.db.models import Sum
         tipo = self.indicador_financiador.tipo
         registros = AtividadeRegistro.objects.filter(atividade=self.atividade)
+        if self.data_inicio:
+            registros = registros.filter(data_inicio__gte=self.data_inicio, data_inicio__lte=self.data)
         SUM_MAP = {
             'pessoas':           (Pessoas,        'total_pessoas'),
             'organizacoes':      (Organizacoes,   'total_organizacoes'),

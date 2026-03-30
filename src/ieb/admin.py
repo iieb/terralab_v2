@@ -229,7 +229,7 @@ admin.site.register(Equipe)
 admin.site.register(EquipeProjeto)
 @admin.register(Meta)
 class MetaAdmin(admin.ModelAdmin):
-    list_display = ('atividade', 'indicador', 'base', 'meta', 'data', 'get_realizado', 'get_percentual')
+    list_display = ('atividade', 'indicador', 'base', 'meta', 'data_inicio', 'data', 'get_realizado', 'get_percentual')
     list_filter = ('indicador__tipo', 'atividade__componente__projeto')
     search_fields = ('atividade__nome', 'indicador__nome')
 
