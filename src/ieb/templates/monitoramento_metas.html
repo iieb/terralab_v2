@@ -49,6 +49,7 @@
                     <th>Atividade</th>
                     <th>Indicador</th>
                     <th>Tipo</th>
+                    <th>Financiador</th>
                     <th class="cell-num">Base</th>
                     <th class="cell-num">Meta</th>
                     <th class="cell-num">Realizado</th>
@@ -58,27 +59,26 @@
             </thead>
             <tbody>
                 {% for m in metas %}
-                {% with pct=m.percentual realizado=m.realizado %}
                 <tr>
-                    <td>{{ m.atividade.componente.projeto.nome_fant }}</td>
-                    <td>{{ m.atividade.codigo }} — {{ m.atividade.nome }}</td>
-                    <td>{{ m.indicador.nome }}</td>
-                    <td><span class="tipo-badge">{{ m.indicador.get_tipo_display }}</span></td>
+                    <td>{{ m.projeto }}</td>
+                    <td>{{ m.atividade }}</td>
+                    <td>{{ m.indicador }}</td>
+                    <td><span class="tipo-badge">{{ m.tipo }}</span></td>
+                    <td class="cell-muted">{{ m.financiador|default:"—" }}</td>
                     <td class="cell-num">{{ m.base }}</td>
                     <td class="cell-num">{{ m.meta }}</td>
-                    <td class="cell-num">{{ realizado }}</td>
+                    <td class="cell-num">{{ m.realizado }}</td>
                     <td class="cell-num">
                         <div class="pct-wrap">
                             <div class="pct-bar">
-                                <div class="pct-fill {% if pct >= 100 %}pct-done{% elif pct >= 60 %}pct-ok{% else %}pct-low{% endif %}"
-                                     style="width: {{ pct|floatformat:0 }}%{% if pct > 100 %}; width: 100%{% endif %}"></div>
+                                <div class="pct-fill {% if m.percentual >= 100 %}pct-done{% elif m.percentual >= 60 %}pct-ok{% else %}pct-low{% endif %}"
+                                     style="width: {% if m.percentual > 100 %}100{% else %}{{ m.percentual|floatformat:0 }}{% endif %}%"></div>
                             </div>
-                            <span class="pct-label {% if pct >= 100 %}pct-done{% elif pct >= 60 %}pct-ok{% else %}pct-low{% endif %}">{{ pct }}%</span>
+                            <span class="pct-label {% if m.percentual >= 100 %}pct-done{% elif m.percentual >= 60 %}pct-ok{% else %}pct-low{% endif %}">{{ m.percentual }}%</span>
                         </div>
                     </td>
                     <td class="cell-muted">{{ m.data|date:"d/m/Y" }}</td>
                 </tr>
-                {% endwith %}
                 {% endfor %}
             </tbody>
         </table>

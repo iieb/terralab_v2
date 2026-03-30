@@ -1,11 +1,15 @@
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Create your views here.
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from .forms import AtividadeRegistroForm
-from .models import Programa, Projeto, Componente, Atividade, EquipeProjeto, Indicador, IndicadorFinanciador, Meta, AtividadeRegistro, AtividadeRegistroFoto, AtividadeRegistroListaPresenca, Treinados, Leis, Planos, Capacitados, Organizacao, Parceria, Parcerias, Plano, PlanoHistorico, TIs, AreaDireto, AreaGeral, AreaRestrito, Produtos, Produto, Contrato, Contratos, Lei, LeiHistorico, Aplicacao, Mobilizados, Modelo, AtividadeRegistroModelo
+from .models import Programa, Projeto, Componente, Atividade, EquipeProjeto, Indicador, IndicadorFinanciador, Meta, MetaFinanciador, AtividadeRegistro, AtividadeRegistroFoto, AtividadeRegistroListaPresenca, Treinados, Leis, Planos, Capacitados, Organizacao, Parceria, Parcerias, Plano, PlanoHistorico, TIs, AreaDireto, AreaGeral, AreaRestrito, Produtos, Produto, Contrato, Contratos, Lei, LeiHistorico, Aplicacao, Mobilizados, Modelo, AtividadeRegistroModelo
 from django.views.decorators.csrf import csrf_exempt
 import unicodedata
 import re
@@ -462,6 +466,7 @@ def load_equipes_adicionais(request):
     equipes = EquipeProjeto.objects.filter(projeto_id=projeto_id).all()
     return JsonResponse(list(equipes.values('id', 'equipe__nome')), safe=False)
 
+@login_required
 def load_indicadores(request):
     atividade_id = request.GET.get('atividade')
     projeto_id = request.GET.get('projeto')
@@ -908,7 +913,7 @@ def _atividade_registro_process(request, template='atividade_registro_form.html'
                             indicadores_por_id[indicador_id] = indicador
                             tipo = indicador.tipo
                     except (ValueError, IndexError, Indicador.DoesNotExist, IndicadorFinanciador.DoesNotExist) as e:
-                        print(f"Erro ao processar o indicador {key}: {e}")
+                        logger.warning("Indicador inválido no POST de AtividadeRegistro — chave=%s erro=%s", key, e)
                         continue
 
                     value = request.POST[key]
@@ -1359,16 +1364,54 @@ def monitoramento_metas_view(request):
     """Metas por projeto com realizado e percentual de cumprimento."""
     projeto_id = request.GET.get('projeto')
 
-    metas = Meta.objects.select_related(
+    base_qs = Meta.objects.select_related(
         'atividade__componente__projeto', 'indicador'
     ).order_by(
         'atividade__componente__projeto__nome_fant',
         'atividade__codigo',
         'indicador__nome',
     )
+    fin_qs = MetaFinanciador.objects.select_related(
+        'atividade__componente__projeto',
+        'indicador_financiador__financiador',
+    ).order_by(
+        'atividade__componente__projeto__nome_fant',
+        'atividade__codigo',
+        'indicador_financiador__nome',
+    )
 
     if projeto_id:
-        metas = metas.filter(atividade__componente__projeto_id=projeto_id)
+        base_qs = base_qs.filter(atividade__componente__projeto_id=projeto_id)
+        fin_qs = fin_qs.filter(atividade__componente__projeto_id=projeto_id)
+
+    metas = []
+    for m in base_qs:
+        metas.append({
+            'projeto': m.atividade.componente.projeto.nome_fant,
+            'atividade': f"{m.atividade.codigo} — {m.atividade.nome}",
+            'indicador': m.indicador.nome,
+            'tipo': m.indicador.get_tipo_display(),
+            'financiador': None,
+            'base': m.base,
+            'meta': m.meta,
+            'realizado': m.realizado,
+            'percentual': m.percentual,
+            'data': m.data,
+        })
+    for m in fin_qs:
+        metas.append({
+            'projeto': m.atividade.componente.projeto.nome_fant,
+            'atividade': f"{m.atividade.codigo} — {m.atividade.nome}",
+            'indicador': m.indicador_financiador.nome,
+            'tipo': m.indicador_financiador.get_tipo_display(),
+            'financiador': m.indicador_financiador.financiador.sigla,
+            'base': m.base,
+            'meta': m.meta,
+            'realizado': m.realizado,
+            'percentual': m.percentual,
+            'data': m.data,
+        })
+    metas.sort(key=lambda x: (x['projeto'], x['atividade'], x['indicador']))
 
     context = {
         'metas': metas,
