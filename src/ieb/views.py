@@ -9,7 +9,16 @@ from django.http import JsonResponse
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from .forms import AtividadeRegistroForm
-from .models import Programa, Projeto, Componente, Atividade, EquipeProjeto, Indicador, IndicadorFinanciador, Meta, MetaFinanciador, AtividadeRegistro, AtividadeRegistroFoto, AtividadeRegistroListaPresenca, Treinados, Leis, Planos, Capacitados, Organizacao, Parceria, Parcerias, Plano, PlanoHistorico, TIs, AreaDireto, AreaGeral, AreaRestrito, Produtos, Produto, Contrato, Contratos, Lei, LeiHistorico, Aplicacao, Mobilizados, Modelo, AtividadeRegistroModelo
+from .models import (
+    Programa, Projeto, Componente, Atividade, EquipeProjeto,
+    Indicador, IndicadorFinanciador, Meta, MetaFinanciador,
+    AtividadeRegistro, AtividadeRegistroFoto, AtividadeRegistroListaPresenca,
+    Pessoas, Organizacoes, Area, AreasProtegidas, Evento, Rede, PequenoProjeto, Fundo, Outro,
+    Leis, Planos, Parceria, Parcerias, Plano, PlanoHistorico,
+    TIs, UC, PA, TUC,
+    Produtos, Produto, Contrato, Contratos,
+    Lei, LeiHistorico, Mobilizados, Modelo, AtividadeRegistroModelo,
+)
 from django.views.decorators.csrf import csrf_exempt
 import unicodedata
 import re
@@ -35,405 +44,6 @@ def normalize_string(s):
 def atividade_registro_view(request):
     return _atividade_registro_process(request, template='atividade_registro_form.html')
 
-
-def __atividade_registro_view_original(request):  # mantido apenas como referência histórica — não usado
-    if request.method == 'POST':
-        form = AtividadeRegistroForm(request.POST, request.FILES)
-        if form.is_valid():
-            atividade_registro = form.save()
-
-            # Inicialização das variáveis para capturar os dados
-            treinados_data = {'total_pessoas': None, 'homens': None, 'mulheres': None, 'jovens': None, 'foco_treinamento': None}
-            planos_data = {'nome': '', 'tipo': '', 'situacao': ''}
-            capacitados_data = {
-                'organizacoes': [],
-                'total_organizacoes': 0,
-                'foco_capacitacao': None  # Novo campo
-            }
-            parcerias_data = {'parcerias': [], 'total_parcerias': 0}  # Adicionar suporte para Parcerias
-            area_geral_data = {'tis': []}
-            area_direto_data = {'tis': []}
-            area_restrito_data = {'ti': None, 'area_em_ha': None}
-            produtos_data = {'produtos': [], 'total_produtos': 0}
-            contratos_data = {'contratos': []}
-            leis_data = {'leis': []}
-            aplicacao_data = {'total_pessoas': None, 'homens': None, 'mulheres': None, 'jovens': None}
-            mobilizados_data = {
-                'valor_mobilizado': None,
-                'tipo_apoio': None,
-                'fonte_apoio': None,
-            }
-            modelos_data = {
-                'modelos': [],   # IDs dos modelos selecionados
-                'status': {}     # Dicionário com o status para cada modelo
-            }
-
-
-            treinados_exist = leis_exist = planos_exist = capacitados_exist = parcerias_exist = area_geral_exist = area_direto_exist = area_restrito_exist = produtos_exist = contratos_exist = leis_exist = aplicacao_exist = mobilizados_exist = modelos_exist = False
-
-            # Processamento dos campos enviados pelo formulário
-            for key, value in request.POST.items():
-                if key.startswith('indicadores_'):
-                    try:
-                        parts = key.split('_')
-                        indicador_id = int(parts[1])
-                        field_name = '_'.join(parts[2:])
-                        indicador = Indicador.objects.get(id=indicador_id)
-
-                        if indicador.tipo == 'treinados':
-                            treinados_exist = True
-                            if field_name == 'total_pessoas':
-                                treinados_data['total_pessoas'] = int(value)
-                            elif field_name == 'homens':
-                                treinados_data['homens'] = int(value)
-                            elif field_name == 'mulheres':
-                                treinados_data['mulheres'] = int(value)
-                            elif field_name == 'jovens':
-                                treinados_data['jovens'] = int(value)
-                            elif field_name == 'foco_treinamento':
-                                treinados_data['foco_treinamento'] = value
-
-                        elif indicador.tipo == 'planos':
-                            planos_exist = True
-                            if field_name == 'nome':
-                                planos_data['nome'] = value
-                            elif field_name == 'tipo':
-                                planos_data['tipo'] = value
-                            elif field_name == 'situacao':
-                                planos_data['situacao'] = value
-
-                        elif indicador.tipo == 'capacitados':
-                            capacitados_exist = True
-                            if field_name == 'organizacoes':
-                                capacitados_data['organizacoes'].extend(request.POST.getlist(key))
-                            elif field_name == 'foco_capacitacao':
-                                capacitados_data['foco_capacitacao'] = value
-
-                        elif indicador.tipo == 'parcerias':
-                            parcerias_exist = True
-                            if field_name == 'parcerias':
-                                parcerias_data['parcerias'].extend(request.POST.getlist(key))
-
-                        elif indicador.tipo == 'area_geral':
-                            area_geral_exist = True
-                            if field_name == 'tis':
-                                area_geral_data['tis'].extend(request.POST.getlist(key))
-
-                        elif indicador.tipo == 'area_direto':
-                            area_direto_exist = True
-                            if field_name == 'tis':
-                                area_direto_data['tis'].extend(request.POST.getlist(key))
-
-                        elif indicador.tipo == 'area_restrito':
-                            area_restrito_exist = True
-                            if field_name == 'ti':
-                                area_restrito_data['ti'] = value
-                            elif field_name == 'area_em_ha':
-                                valor = value.replace(',', '.')
-                                try:
-                                    area_restrito_data['area_em_ha'] = Decimal(valor)
-                                except (InvalidOperation, ValueError):
-                                    area_restrito_data['area_em_ha'] = None
-
-                        elif indicador.tipo == 'produtos':
-                            produtos_exist = True
-                            if field_name == 'produtos':
-                                produtos_data['produtos'].extend(request.POST.getlist(key))
-
-                        elif indicador.tipo == 'contratos':
-                            contratos_exist = True
-                            if field_name == 'contratos':
-                                contratos_data['contratos'].extend(request.POST.getlist(key))
-
-                        elif indicador.tipo == 'leis_politicas':
-                            leis_exist = True
-                            if field_name == 'leis':
-                                leis_data['leis'].extend(request.POST.getlist(key))
-
-                        elif indicador.tipo == 'aplicacao':
-                            aplicacao_exist = True
-                            if field_name == 'total_pessoas':
-                                aplicacao_data['total_pessoas'] = int(value)
-                            elif field_name == 'homens':
-                                aplicacao_data['homens'] = int(value)
-                            elif field_name == 'mulheres':
-                                aplicacao_data['mulheres'] = int(value)
-                            elif field_name == 'jovens':
-                                aplicacao_data['jovens'] = int(value)
-
-                        elif indicador.tipo == 'mobilizados':
-                            mobilizados_exist = True
-                            if field_name == 'valor_mobilizado':
-                                mobilizados_data['valor_mobilizado'] = value
-                            elif field_name == 'tipo_apoio':
-                                mobilizados_data['tipo_apoio'] = value
-                            elif field_name == 'fonte_apoio':
-                                mobilizados_data['fonte_apoio'] = value
-
-                        elif indicador.tipo == 'outro':
-                            modelos_exist = True
-                            if field_name == 'modelos':
-                                modelos_data['modelos'].extend(request.POST.getlist(key))
-                            elif field_name.startswith('status_modelo_'):
-                                modelo_id = field_name.split('status_modelo_')[1]
-                                modelos_data['status'][modelo_id] = value
-                            elif field_name == 'novos_modelos':
-                                novos_modelos = [nome.strip() for nome in value.split(',') if nome.strip()]
-                                for nome in novos_modelos:
-                                    novo_modelo = Modelo.objects.create(nome=nome)
-                                    modelos_data['modelos'].append(str(novo_modelo.id))
-
-
-
-                    except (Indicador.DoesNotExist, ValueError) as e:
-                        print(f"Erro ao processar o indicador {key}: {e}")
-                        continue
-
-            # Salvar dados processados
-            if treinados_exist and all(v is not None for v in treinados_data.values()):
-                Treinados.objects.create(atividade_registro=atividade_registro, **treinados_data)
-
-            if capacitados_exist and capacitados_data['organizacoes'] and capacitados_data['foco_capacitacao']:
-                # Salvar instância de Capacitados
-                capacitados_instance = Capacitados(
-                    atividade_registro=atividade_registro,
-                    foco_capacitacao=capacitados_data['foco_capacitacao']
-                )
-                capacitados_instance.save()
-
-                # Associar organizações e atualizar total
-                capacitados_instance.organizacoes.set(capacitados_data['organizacoes'])
-                capacitados_instance.total_organizacoes = capacitados_instance.organizacoes.count()
-                capacitados_instance.save()
-
-            if parcerias_exist and parcerias_data['parcerias']:
-                parcerias_instance = Parcerias(atividade_registro=atividade_registro)
-                parcerias_instance.save()
-                parcerias_instance.parcerias.set(parcerias_data['parcerias'])
-                parcerias_instance.total_parcerias = len(parcerias_data['parcerias'])
-                parcerias_instance.save()
-
-            if planos_exist and planos_data['nome'] and planos_data['tipo'] and planos_data['situacao']:
-                # Criar um novo plano associado ao registro de atividade
-                Plano.objects.create(
-                    atividade_registro=atividade_registro,
-                    nome=planos_data['nome'],
-                    tipo=planos_data['tipo'],
-                    situacao=planos_data['situacao']
-                )
-
-            if area_geral_exist and area_geral_data['tis']:
-                area_geral_instance = AreaGeral(atividade_registro=atividade_registro)
-                area_geral_instance.save()
-                area_geral_instance.tis.set(area_geral_data['tis'])
-                area_geral_instance.total_tis = area_geral_instance.tis.count()
-                area_geral_instance.save()
-
-            if area_direto_exist and area_direto_data['tis']:
-                area_direto_instance = AreaDireto(atividade_registro=atividade_registro)
-                area_direto_instance.save()
-                area_direto_instance.tis.set(area_direto_data['tis'])
-                area_direto_instance.total_tis = area_direto_instance.tis.count()
-                area_direto_instance.save()
-
-            if area_restrito_exist and area_restrito_data['ti'] and area_restrito_data['area_em_ha']:
-                area_restrito_instance = AreaRestrito(
-                    atividade_registro=atividade_registro,
-                    ti_id=area_restrito_data['ti'],
-                    area_em_ha=area_restrito_data['area_em_ha']
-                )
-                area_restrito_instance.save()
-
-            if produtos_exist and produtos_data['produtos']:
-                produtos_instance = Produtos(atividade_registro=atividade_registro)
-                produtos_instance.save()
-                produtos_instance.produtos.set(produtos_data['produtos'])
-                produtos_instance.total_produtos = produtos_instance.produtos.count()
-                produtos_instance.save()
-
-            if contratos_exist and contratos_data['contratos']:
-                contratos_instance = Contratos(atividade_registro=atividade_registro)
-                contratos_instance.save()
-                contratos_instance.contratos.set(contratos_data['contratos'])
-                contratos_instance.save()
-
-            if leis_exist and leis_data['leis']:
-                leis_instance = Leis(atividade_registro=atividade_registro)
-                leis_instance.save()
-                leis_instance.leis.set(leis_data['leis'])  # Correção aqui
-                leis_instance.save()
-
-            if aplicacao_exist and all(v is not None for v in aplicacao_data.values()):
-                Aplicacao.objects.create(atividade_registro=atividade_registro, **aplicacao_data)
-
-            if mobilizados_exist and mobilizados_data['valor_mobilizado'] and mobilizados_data['tipo_apoio'] and mobilizados_data['fonte_apoio']:
-                Mobilizados.objects.create(atividade_registro=atividade_registro, **mobilizados_data)
-
-            if modelos_exist:
-                for modelo_id in modelos_data['modelos']:
-                    status = modelos_data['status'].get(modelo_id, '')
-                    if status:
-                        AtividadeRegistroModelo.objects.create(
-                            atividade_registro=atividade_registro,
-                            modelo_id=int(modelo_id),
-                            status=status
-                        )
-
-
-            atividade_registro = form.save()
-            email_organizacao = form.cleaned_data.get('email_organizacao')
-            try:
-                enviar_email_notificacao(atividade_registro.id, email_organizacao)
-            except Exception as e:
-                print(f"Aviso: falha ao enviar e-mail de notificação: {e}")
-            messages.success(request, 'Registro de atividade salvo com sucesso!')
-            return redirect('atividade_registro_detalhe', pk=atividade_registro.pk)
-        else:
-            messages.error(request, 'Erro ao salvar o registro de atividade. Verifique os campos e tente novamente.')
-            print(form.errors)
-    else:
-        form = AtividadeRegistroForm()
-
-    # Gerar o dicionário de configuração dos indicadores dinamicamente
-    organizacoes = Organizacao.objects.all()
-    organizacoes_options = [{'value': org.id, 'label': org.nome} for org in organizacoes]
-
-    parcerias = Parceria.objects.all()
-    parcerias_options = [{'value': p.id, 'label': f"{p.nome} - {p.tipo}"} for p in parcerias]
-
-    planos = Plano.objects.all()
-    planos_options = [{'value': plano.id, 'label': f'{plano.nome} - {plano.tipo} - {plano.situacao}'} for plano in planos]
-
-    tis_list = TIs.objects.all()
-    tis_options = [{'value': ti.id, 'label': ti.nome} for ti in tis_list]
-
-    produtos = Produto.objects.all()
-    produtos_options = [{'value': produto.id, 'label': produto.nome} for produto in produtos]
-
-    contratos = Contrato.objects.all()
-    contratos_options = [{'value': contrato.id, 'label': str(contrato)} for contrato in contratos]
-
-    leis = Lei.objects.all()
-    leis_options = [{'value': lei.id, 'label': str(lei)} for lei in leis]   
-
-    modelos_existentes = Modelo.objects.all()
-    modelos_options = [{'value': modelo.id, 'label': modelo.nome} for modelo in modelos_existentes]
-
-
-
-
-    indicadores_config = {
-        "treinados": [
-            {"name": "total_pessoas", "type": "number", "label": "Total de Pessoas Treinadas"},
-            {"name": "homens", "type": "number", "label": "Homens"},
-            {"name": "mulheres", "type": "number", "label": "Mulheres"},
-            {"name": "jovens", "type": "number", "label": "Jovens"},
-            {"name": "foco_treinamento", "type": "select", "label": "Foco do Treinamento", "options": [
-                {"value": "implementacao", "label": "Implementação melhorada/monitoramento/vigilância"},
-                {"value": "ativ_prod", "label": "Meios de subsistência/cadeia de valor sustentáveis melhorados"},
-                {"value": "governanca", "label": "Fortalecimento institucional/capacitação organizacional/governança"}
-            ]}
-        ],
-        "leis_politicas": [
-            {"name": "leis", "type": "checkbox", "label": "Leis", "options": leis_options}
-        ],
-        "planos": [
-            {"name": "situacao_nova", "type": "select", "label": "Situação após esta atividade",
-             "options": [{"value": s, "label": l} for s, l in Plano.SITUACAO_CHOICES]},
-        ],
-        "capacitados": [
-            {"name": "organizacoes", "type": "checkbox", "label": "Organizações", "options": organizacoes_options},
-            {"name": "foco_capacitacao", "type": "select", "label": "Foco da Capacitação", "options": [
-                {"value": "implementacao", "label": "Implementação melhorada/monitoramento/vigilância"},
-                {"value": "ativ_prod", "label": "Meios de subsistência/cadeia de valor sustentáveis melhorados"},
-                {"value": "governanca", "label": "Fortalecimento institucional/capacitação organizacional/governança"}
-            ]}
-        ],
-        "parcerias": [
-            {"name": "parcerias", "type": "checkbox", "label": "Parcerias", "options": parcerias_options}
-        ],
-        "area_geral": [
-            {
-                "name": "tis",
-                "type": "checkbox",
-                "label": "Selecione as TIs para Área Geral",
-                "options": tis_options
-            }
-        ],
-        "area_direto": [
-            {
-                "name": "tis",
-                "type": "checkbox",
-                "label": "Selecione as TIs para Área Direto",
-                "options": tis_options
-            }
-        ],
-        "area_restrito": [
-            {
-                "name": "ti",
-                "type": "select",
-                "label": "Selecione a TI para Área Restrito",
-                "options": tis_options  # Certifique-se de que `tis_options` está no formato correto
-            },
-            {
-                "name": "area_em_ha",
-                "type": "number",
-                "label": "Área em hectares (ha)",
-                "step": "0.01"
-            }
-        ],
-        "produtos": [
-            {"name": "produtos", "type": "checkbox", "label": "Produtos", "options": produtos_options}
-        ],
-        "contratos": [
-            {"name": "contratos", "type": "checkbox", "label": "Contratos", "options": contratos_options}
-        ],
-        "aplicacao": [
-            {"name": "total_pessoas", "type": "number", "label": "Total de Pessoas"},
-            {"name": "homens", "type": "number", "label": "Homens"},
-            {"name": "mulheres", "type": "number", "label": "Mulheres"},
-            {"name": "jovens", "type": "number", "label": "Jovens"},
-        ],  
-        "mobilizados": [
-            {"name": "valor_mobilizado", "type": "number", "label": "Valor Mobilizado"},
-            {"name": "tipo_apoio", "type": "select", "label": "Tipo de Apoio", "options": [
-                {"value": "Contribuição em dinheiro", "label": "Contribuição em dinheiro"},
-                {"value": "Voluntariado", "label": "Voluntariado"},
-                {"value": "Doação do tempo dos funcionários", "label": "Doação do tempo dos funcionários"},
-                {"value": "Doação de suprimentos, equipamentos", "label": "Doação de suprimentos, equipamentos"},
-                {"value": "Propriedade intelectual", "label": "Propriedade intelectual"},
-            ]},
-            {"name": "fonte_apoio", "type": "select", "label": "Fonte de Apoio", "options": [
-                {"value": "Renda proveniente da atividades/projeto", "label": "Renda proveniente da atividades/projeto"},
-                {"value": "Empresas", "label": "Empresas"},
-                {"value": "Fundação privada", "label": "Fundação privada"},
-                {"value": "Outros doadores (incluindo multilaterais)", "label": "Outros doadores (incluindo multilaterais)"},
-                {"value": "Outras organizações sem fins lucrativos", "label": "Outras organizações sem fins lucrativos"},
-                {"value": "Indivíduo de alta renda/Investidor anjo", "label": "Indivíduo de alta renda/Investidor anjo"},
-                {"value": "OUTRO (especifique)", "label": "OUTRO (especifique)"},
-            ]},
-        ],
-        "modelos": [
-            {
-                "name": "modelos",
-                "type": "checkbox",
-                "label": "Selecione os Modelos",
-                "options": modelos_options
-            },
-            {
-                "name": "novos_modelos",
-                "type": "text",
-                "label": "Adicionar Novos Modelos (separados por vírgula)"
-            },
-            # O campo de status será renderizado dinamicamente no template
-        ],
-    }
-
-    return render(request, 'atividade_registro_form.html', {
-        'form': form,
-        'indicadores_config': indicadores_config,  # Passando o dicionário para o template
-        'produtos_options': produtos_options,  
-    })
 
 def load_componentes(request):
     projeto_id = request.GET.get('projeto')
@@ -527,17 +137,20 @@ def atividade_registro_detalhe_view(request, pk):
         'atividade_registro': atividade_registro,
         'fotos': atividade_registro.fotos_set.all(),
         'listas_presenca': atividade_registro.listas_presenca_set.all(),
-        'treinados': Treinados.objects.filter(atividade_registro=atividade_registro).first(),
-        'capacitados': Capacitados.objects.filter(atividade_registro=atividade_registro).first(),
+        'pessoas': Pessoas.objects.filter(atividade_registro=atividade_registro),
+        'organizacoes': Organizacoes.objects.filter(atividade_registro=atividade_registro),
+        'area': Area.objects.filter(atividade_registro=atividade_registro),
+        'areas_protegidas': AreasProtegidas.objects.filter(atividade_registro=atividade_registro),
+        'eventos': Evento.objects.filter(atividade_registro=atividade_registro),
+        'redes': Rede.objects.filter(atividade_registro=atividade_registro),
+        'pequenos_projetos': PequenoProjeto.objects.filter(atividade_registro=atividade_registro),
+        'fundos': Fundo.objects.filter(atividade_registro=atividade_registro),
+        'outro': Outro.objects.filter(atividade_registro=atividade_registro),
         'parcerias': Parcerias.objects.filter(atividade_registro=atividade_registro).first(),
         'planos': Planos.objects.filter(atividade_registro=atividade_registro).select_related('plano'),
-        'area_restrito': AreaRestrito.objects.filter(atividade_registro=atividade_registro).first(),
-        'area_direto': AreaDireto.objects.filter(atividade_registro=atividade_registro).first(),
-        'area_geral': AreaGeral.objects.filter(atividade_registro=atividade_registro).first(),
         'produtos': Produtos.objects.filter(atividade_registro=atividade_registro).first(),
         'contratos': Contratos.objects.filter(atividade_registro=atividade_registro).first(),
         'leis': Leis.objects.filter(atividade_registro=atividade_registro).first(),
-        'aplicacao': Aplicacao.objects.filter(atividade_registro=atividade_registro).first(),
         'mobilizados': Mobilizados.objects.filter(atividade_registro=atividade_registro).first(),
         'modelos': AtividadeRegistroModelo.objects.filter(atividade_registro=atividade_registro).select_related('modelo'),
     })
@@ -775,17 +388,16 @@ def enviar_email_notificacao(atividade_registro_id, email_organizacao):
         'atividade_registro': atividade_registro,
         'fotos': atividade_registro.fotos_set.all(),
         'listas_presenca': atividade_registro.listas_presenca_set.all(),
-        'treinados': Treinados.objects.filter(atividade_registro=atividade_registro).first(),
-        'capacitados': Capacitados.objects.filter(atividade_registro=atividade_registro).first(),
+        'pessoas': Pessoas.objects.filter(atividade_registro=atividade_registro),
+        'organizacoes': Organizacoes.objects.filter(atividade_registro=atividade_registro),
+        'area': Area.objects.filter(atividade_registro=atividade_registro),
+        'areas_protegidas': AreasProtegidas.objects.filter(atividade_registro=atividade_registro),
+        'eventos': Evento.objects.filter(atividade_registro=atividade_registro),
         'parcerias': Parcerias.objects.filter(atividade_registro=atividade_registro).first(),
         'planos': Planos.objects.filter(atividade_registro=atividade_registro).select_related('plano'),
-        'area_restrito': AreaRestrito.objects.filter(atividade_registro=atividade_registro).first(),
-        'area_direto': AreaDireto.objects.filter(atividade_registro=atividade_registro).first(),
-        'area_geral': AreaGeral.objects.filter(atividade_registro=atividade_registro).first(),
         'produtos': Produtos.objects.filter(atividade_registro=atividade_registro).first(),
         'contratos': Contratos.objects.filter(atividade_registro=atividade_registro).first(),
         'leis': Leis.objects.filter(atividade_registro=atividade_registro).first(),
-        'aplicacao': Aplicacao.objects.filter(atividade_registro=atividade_registro).first(),
         'mobilizados': Mobilizados.objects.filter(atividade_registro=atividade_registro).first(),
         'modelos': AtividadeRegistroModelo.objects.filter(atividade_registro=atividade_registro).select_related('modelo'),
     }
@@ -875,35 +487,41 @@ def _atividade_registro_process(request, template='atividade_registro_form.html'
                 for lista in request.FILES.getlist('lista_presenca'):
                     AtividadeRegistroListaPresenca.objects.create(atividade_registro=atividade_registro, arquivo=lista)
 
-                # Bug C fix: one dict per indicador_id (not one shared dict per tipo)
-                treinados_map    = {}  # {id: {...}}
-                planos_map       = {}  # {id: {situacao_nova: str}}
-                capacitados_map  = {}  # {id: {organizacoes: [], foco_capacitacao}}
-                parcerias_map    = {}  # {id: {parcerias: [ids]}}
-                area_geral_map   = {}  # {id: {tis: [ids]}}
-                area_direto_map  = {}  # {id: {tis: [ids]}}
-                area_restrito_map = {} # {id: {ti, area_em_ha}}
-                produtos_map     = {}  # {id: {produtos: [ids]}}
-                contratos_map    = {}  # {id: {contratos: [ids]}}
-                leis_map         = {}  # {id: {leis: [ids]}}
-                aplicacao_map    = {}  # {id: {total_pessoas, homens, mulheres, jovens}}
-                mobilizados_map  = {}  # {id: {valor_mobilizado, tipo_apoio, fonte_apoio}}
-                modelos_map      = {}  # {id: {modelos: [], status: {}}}
-                indicadores_por_id = {}  # {id: Indicador obj} — Bug D fix
+                # One dict per indicador_id, keyed by tipo
+                pessoas_map          = {}  # {id: {total_pessoas, homens, mulheres, jovens, ...}}
+                organizacoes_map     = {}  # {id: {total_organizacoes, org_sc, org_ind, org_ext, foco}}
+                area_map             = {}  # {id: {ha_restrito, tis, ucs, pas, tucs}}
+                areas_protegidas_map = {}  # {id: {tis, ucs, pas, tucs}}
+                eventos_map          = {}  # {id: {formacoes, seminarios, encontros, reunioes, participantes}}
+                redes_map            = {}  # {id: {nome, tipo, quantidade}}
+                pequenos_projetos_map = {} # {id: {quantidade, tipo, tema, valor_total}}
+                fundos_map           = {}  # {id: {quantidade, valor_total, tipo}}
+                outro_map            = {}  # {id: {descricao, valor}}
+                planos_map           = {}  # {id: {situacao_nova, plano_id}}
+                parcerias_map        = {}  # {id: {parcerias: [ids]}}
+                produtos_map         = {}  # {id: {produtos: [ids]}}
+                contratos_map        = {}  # {id: {contratos: [ids]}}
+                leis_map             = {}  # {id: {leis: [ids]}}
+                mobilizados_map      = {}  # {id: {valor_mobilizado, tipo_apoio, fonte_apoio}}
+                modelos_map          = {}  # {id: {modelos: [], status: {}}}
+                indicadores_por_id   = {}  # {id: Indicador obj}
 
-                # Mapas paralelos para IndicadorFinanciador (prefixo fin_)
-                fin_treinados_map    = {}
-                fin_capacitados_map  = {}
-                fin_parcerias_map    = {}
-                fin_area_geral_map   = {}
-                fin_area_direto_map  = {}
-                fin_area_restrito_map = {}
-                fin_produtos_map     = {}
-                fin_contratos_map    = {}
-                fin_leis_map         = {}
-                fin_aplicacao_map    = {}
-                fin_mobilizados_map  = {}
-                indicadores_fin_por_id = {}  # {id: IndicadorFinanciador obj}
+                # Parallel maps for IndicadorFinanciador (fin_ prefix)
+                fin_pessoas_map          = {}
+                fin_organizacoes_map     = {}
+                fin_area_map             = {}
+                fin_areas_protegidas_map = {}
+                fin_eventos_map          = {}
+                fin_redes_map            = {}
+                fin_pequenos_projetos_map = {}
+                fin_fundos_map           = {}
+                fin_outro_map            = {}
+                fin_parcerias_map        = {}
+                fin_produtos_map         = {}
+                fin_contratos_map        = {}
+                fin_leis_map             = {}
+                fin_mobilizados_map      = {}
+                indicadores_fin_por_id   = {}  # {id: IndicadorFinanciador obj}
 
                 for key in request.POST:
                     if not key.startswith('indicadores_'):
@@ -930,120 +548,186 @@ def _atividade_registro_process(request, template='atividade_registro_form.html'
                         continue
 
                     value = request.POST[key]
-                    _id = indicador_fin_id if is_fin else indicador_id
-                    _tm    = fin_treinados_map    if is_fin else treinados_map
-                    _cm    = fin_capacitados_map  if is_fin else capacitados_map
-                    _pm    = fin_parcerias_map    if is_fin else parcerias_map
-                    _agm   = fin_area_geral_map   if is_fin else area_geral_map
-                    _adm   = fin_area_direto_map  if is_fin else area_direto_map
-                    _arm   = fin_area_restrito_map if is_fin else area_restrito_map
-                    _prom  = fin_produtos_map     if is_fin else produtos_map
-                    _conm  = fin_contratos_map    if is_fin else contratos_map
-                    _lm    = fin_leis_map         if is_fin else leis_map
-                    _apm   = fin_aplicacao_map    if is_fin else aplicacao_map
-                    _mobm  = fin_mobilizados_map  if is_fin else mobilizados_map
+                    _id   = indicador_fin_id if is_fin else indicador_id
 
-                    if tipo == 'treinados':
-                        d = _tm.setdefault(_id, {'total_pessoas': None, 'homens': None, 'mulheres': None, 'jovens': None, 'foco_treinamento': None})
-                        if field_name == 'total_pessoas': d['total_pessoas'] = int(value)
-                        elif field_name == 'homens': d['homens'] = int(value)
-                        elif field_name == 'mulheres': d['mulheres'] = int(value)
-                        elif field_name == 'jovens': d['jovens'] = int(value)
-                        elif field_name == 'foco_treinamento': d['foco_treinamento'] = value
+                    # ── helpers for int/float parsing ──────────────────────────
+                    def _int(v):
+                        try: return int(v)
+                        except (ValueError, TypeError): return None
+
+                    def _float(v):
+                        try: return float(str(v).replace(',', '.'))
+                        except (ValueError, TypeError): return None
+
+                    if tipo == 'pessoas':
+                        _m = fin_pessoas_map if is_fin else pessoas_map
+                        d = _m.setdefault(_id, {})
+                        if field_name == 'total_pessoas': d['total_pessoas'] = _int(value) or 0
+                        elif field_name == 'homens': d['homens'] = _int(value)
+                        elif field_name == 'mulheres': d['mulheres'] = _int(value)
+                        elif field_name == 'jovens': d['jovens'] = _int(value)
+                        elif field_name == 'pct_indigenas': d['pct_indigenas'] = _int(value)
+                        elif field_name == 'pct_extrativistas': d['pct_extrativistas'] = _int(value)
+                        elif field_name == 'pct_quilombolas': d['pct_quilombolas'] = _int(value)
+                        elif field_name == 'servidor_publico': d['servidor_publico'] = _int(value)
+                        elif field_name == 'foco': d['foco'] = value
+
+                    elif tipo == 'organizacoes':
+                        _m = fin_organizacoes_map if is_fin else organizacoes_map
+                        d = _m.setdefault(_id, {})
+                        if field_name == 'total_organizacoes': d['total_organizacoes'] = _int(value) or 0
+                        elif field_name == 'org_sociedade_civil': d['org_sociedade_civil'] = _int(value)
+                        elif field_name == 'org_indigenas': d['org_indigenas'] = _int(value)
+                        elif field_name == 'org_extrativistas': d['org_extrativistas'] = _int(value)
+                        elif field_name == 'foco': d['foco'] = value
+
+                    elif tipo == 'area':
+                        _m = fin_area_map if is_fin else area_map
+                        d = _m.setdefault(_id, {'tis': [], 'ucs': [], 'pas': [], 'tucs': []})
+                        if field_name == 'ha_restrito': d['ha_restrito'] = _float(value)
+                        elif field_name == 'tis': d['tis'].extend(request.POST.getlist(key))
+                        elif field_name == 'ucs': d['ucs'].extend(request.POST.getlist(key))
+                        elif field_name == 'pas': d['pas'].extend(request.POST.getlist(key))
+                        elif field_name == 'tucs': d['tucs'].extend(request.POST.getlist(key))
+
+                    elif tipo == 'areas_protegidas':
+                        _m = fin_areas_protegidas_map if is_fin else areas_protegidas_map
+                        d = _m.setdefault(_id, {'tis': [], 'ucs': [], 'pas': [], 'tucs': []})
+                        if field_name == 'tis': d['tis'].extend(request.POST.getlist(key))
+                        elif field_name == 'ucs': d['ucs'].extend(request.POST.getlist(key))
+                        elif field_name == 'pas': d['pas'].extend(request.POST.getlist(key))
+                        elif field_name == 'tucs': d['tucs'].extend(request.POST.getlist(key))
+
+                    elif tipo == 'eventos':
+                        _m = fin_eventos_map if is_fin else eventos_map
+                        d = _m.setdefault(_id, {})
+                        if field_name == 'formacoes': d['formacoes'] = _int(value)
+                        elif field_name == 'seminarios': d['seminarios'] = _int(value)
+                        elif field_name == 'encontros': d['encontros'] = _int(value)
+                        elif field_name == 'reunioes': d['reunioes'] = _int(value)
+                        elif field_name == 'participantes': d['participantes'] = _int(value)
+
+                    elif tipo == 'redes':
+                        _m = fin_redes_map if is_fin else redes_map
+                        d = _m.setdefault(_id, {})
+                        if field_name == 'nome': d['nome'] = value
+                        elif field_name == 'tipo': d['tipo'] = value
+                        elif field_name == 'quantidade': d['quantidade'] = _int(value) or 0
+
+                    elif tipo == 'pequenos_projetos':
+                        _m = fin_pequenos_projetos_map if is_fin else pequenos_projetos_map
+                        d = _m.setdefault(_id, {})
+                        if field_name == 'quantidade': d['quantidade'] = _int(value) or 0
+                        elif field_name == 'tipo': d['tipo'] = value
+                        elif field_name == 'tema': d['tema'] = value
+                        elif field_name == 'valor_total': d['valor_total'] = _float(value)
+
+                    elif tipo == 'fundos':
+                        _m = fin_fundos_map if is_fin else fundos_map
+                        d = _m.setdefault(_id, {})
+                        if field_name == 'quantidade': d['quantidade'] = _int(value) or 0
+                        elif field_name == 'valor_total': d['valor_total'] = _float(value)
+                        elif field_name == 'tipo': d['tipo'] = value
+
+                    elif tipo == 'outro':
+                        _m = fin_outro_map if is_fin else outro_map
+                        d = _m.setdefault(_id, {})
+                        if field_name == 'descricao': d['descricao'] = value
+                        elif field_name == 'valor': d['valor'] = _float(value)
 
                     elif tipo == 'planos' and not is_fin:
                         d = planos_map.setdefault(_id, {})
-                        if field_name == 'situacao_nova':
-                            d['situacao_nova'] = value
-                        elif field_name == 'plano_id':
-                            d['plano_id'] = int(value)
-
-                    elif tipo == 'capacitados':
-                        d = _cm.setdefault(_id, {'organizacoes': [], 'foco_capacitacao': None})
-                        if field_name == 'organizacoes': d['organizacoes'].extend(request.POST.getlist(key))
-                        elif field_name == 'foco_capacitacao': d['foco_capacitacao'] = value
+                        if field_name == 'situacao_nova': d['situacao_nova'] = value
+                        elif field_name == 'plano_id': d['plano_id'] = _int(value)
 
                     elif tipo == 'parcerias':
-                        d = _pm.setdefault(_id, {'parcerias': []})
+                        _m = fin_parcerias_map if is_fin else parcerias_map
+                        d = _m.setdefault(_id, {'parcerias': []})
                         if field_name == 'parcerias': d['parcerias'].extend(request.POST.getlist(key))
 
-                    elif tipo == 'area_geral':
-                        d = _agm.setdefault(_id, {'tis': []})
-                        if field_name == 'tis': d['tis'].extend(request.POST.getlist(key))
-
-                    elif tipo == 'area_direto':
-                        d = _adm.setdefault(_id, {'tis': []})
-                        if field_name == 'tis': d['tis'].extend(request.POST.getlist(key))
-
-                    elif tipo == 'area_restrito':
-                        d = _arm.setdefault(_id, {'ti': None, 'area_em_ha': None})
-                        if field_name == 'ti': d['ti'] = value
-                        elif field_name == 'area_em_ha':
-                            valor = value.replace(',', '.')
-                            try:
-                                d['area_em_ha'] = Decimal(valor)
-                            except (InvalidOperation, ValueError):
-                                d['area_em_ha'] = None
-
                     elif tipo == 'produtos':
-                        d = _prom.setdefault(_id, {'produtos': []})
+                        _m = fin_produtos_map if is_fin else produtos_map
+                        d = _m.setdefault(_id, {'produtos': []})
                         if field_name == 'produtos': d['produtos'].extend(request.POST.getlist(key))
 
                     elif tipo == 'contratos':
-                        d = _conm.setdefault(_id, {'contratos': []})
+                        _m = fin_contratos_map if is_fin else contratos_map
+                        d = _m.setdefault(_id, {'contratos': []})
                         if field_name == 'contratos': d['contratos'].extend(request.POST.getlist(key))
 
                     elif tipo == 'leis_politicas':
-                        d = _lm.setdefault(_id, {'leis': []})
+                        _m = fin_leis_map if is_fin else leis_map
+                        d = _m.setdefault(_id, {'leis': []})
                         if field_name == 'leis': d['leis'].extend(request.POST.getlist(key))
 
-                    elif tipo == 'aplicacao':
-                        d = _apm.setdefault(_id, {'total_pessoas': None, 'homens': None, 'mulheres': None, 'jovens': None})
-                        if field_name == 'total_pessoas': d['total_pessoas'] = int(value)
-                        elif field_name == 'homens': d['homens'] = int(value)
-                        elif field_name == 'mulheres': d['mulheres'] = int(value)
-                        elif field_name == 'jovens': d['jovens'] = int(value)
-
                     elif tipo == 'mobilizados':
-                        d = _mobm.setdefault(_id, {'valor_mobilizado': None, 'tipo_apoio': None, 'fonte_apoio': None})
+                        _m = fin_mobilizados_map if is_fin else mobilizados_map
+                        d = _m.setdefault(_id, {'valor_mobilizado': None, 'tipo_apoio': None, 'fonte_apoio': None})
                         if field_name == 'valor_mobilizado': d['valor_mobilizado'] = value
                         elif field_name == 'tipo_apoio': d['tipo_apoio'] = value
                         elif field_name == 'fonte_apoio': d['fonte_apoio'] = value
 
-                    elif tipo == 'outro' and not is_fin:
-                        d = modelos_map.setdefault(_id, {'modelos': [], 'status': {}})
-                        if field_name == 'modelos': d['modelos'].extend(request.POST.getlist(key))
-                        elif field_name.startswith('status_modelo_'):
-                            modelo_id = field_name.split('status_modelo_')[1]
-                            d['status'][modelo_id] = value
-                        elif field_name == 'novos_modelos':
-                            for nome in [n.strip() for n in value.split(',') if n.strip()]:
-                                novo_modelo = Modelo.objects.create(nome=nome)
-                                d['modelos'].append(str(novo_modelo.id))
+                # ── Helper: create M2M result (Area / AreasProtegidas) ─────────
+                def _create_m2m_result(Model, ar, ind_or_fin, data, is_fin_flag):
+                    has_restrito = data.get('ha_restrito') is not None
+                    has_m2m = any(data.get(f) for f in ('tis', 'ucs', 'pas', 'tucs'))
+                    if not (has_restrito or has_m2m):
+                        return
+                    kw = {'atividade_registro': ar}
+                    if is_fin_flag:
+                        kw['indicador_financiador'] = ind_or_fin
+                    else:
+                        kw['indicador'] = ind_or_fin
+                    if 'ha_restrito' in data:
+                        kw['ha_restrito'] = data['ha_restrito']
+                    inst = Model(**kw)
+                    inst.save()
+                    for field in ('tis', 'ucs', 'pas', 'tucs'):
+                        if data.get(field):
+                            getattr(inst, field).set(data[field])
+                    inst.save()  # recalcula total_ha / totals
 
-                # Create one record per indicador_id (Bug C + D fix)
-                for ind_id, data in treinados_map.items():
+                # ── Indicador base — criação dos objetos ────────────────────────
+                for ind_id, data in pessoas_map.items():
                     ind = indicadores_por_id.get(ind_id)
-                    if all(v is not None for v in data.values()):
-                        Treinados.objects.create(atividade_registro=atividade_registro, indicador=ind, **data)
+                    Pessoas.objects.create(atividade_registro=atividade_registro, indicador=ind, **data)
 
-                for ind_id, data in capacitados_map.items():
+                for ind_id, data in organizacoes_map.items():
                     ind = indicadores_por_id.get(ind_id)
-                    if data['organizacoes'] and data['foco_capacitacao']:
-                        inst = Capacitados(atividade_registro=atividade_registro, indicador=ind, foco_capacitacao=data['foco_capacitacao'])
-                        inst.save()
-                        inst.organizacoes.set(data['organizacoes'])
-                        inst.total_organizacoes = inst.organizacoes.count()
-                        inst.save()
+                    Organizacoes.objects.create(atividade_registro=atividade_registro, indicador=ind, **data)
 
-                for ind_id, data in parcerias_map.items():
+                for ind_id, data in area_map.items():
                     ind = indicadores_por_id.get(ind_id)
-                    if data['parcerias']:
-                        inst = Parcerias(atividade_registro=atividade_registro, indicador=ind)
-                        inst.save()
-                        inst.parcerias.set(data['parcerias'])
-                        inst.total_parcerias = len(data['parcerias'])
-                        inst.save()
+                    _create_m2m_result(Area, atividade_registro, ind, data, False)
+
+                for ind_id, data in areas_protegidas_map.items():
+                    ind = indicadores_por_id.get(ind_id)
+                    _create_m2m_result(AreasProtegidas, atividade_registro, ind, data, False)
+
+                for ind_id, data in eventos_map.items():
+                    ind = indicadores_por_id.get(ind_id)
+                    if any(v for v in data.values()):
+                        Evento.objects.create(atividade_registro=atividade_registro, indicador=ind, **data)
+
+                for ind_id, data in redes_map.items():
+                    ind = indicadores_por_id.get(ind_id)
+                    if data.get('quantidade'):
+                        Rede.objects.create(atividade_registro=atividade_registro, indicador=ind, **data)
+
+                for ind_id, data in pequenos_projetos_map.items():
+                    ind = indicadores_por_id.get(ind_id)
+                    if data.get('quantidade'):
+                        PequenoProjeto.objects.create(atividade_registro=atividade_registro, indicador=ind, **data)
+
+                for ind_id, data in fundos_map.items():
+                    ind = indicadores_por_id.get(ind_id)
+                    if data.get('quantidade'):
+                        Fundo.objects.create(atividade_registro=atividade_registro, indicador=ind, **data)
+
+                for ind_id, data in outro_map.items():
+                    ind = indicadores_por_id.get(ind_id)
+                    if data.get('descricao') or data.get('valor'):
+                        Outro.objects.create(atividade_registro=atividade_registro, indicador=ind, **data)
 
                 for ind_id, data in planos_map.items():
                     ind = indicadores_por_id.get(ind_id)
@@ -1056,35 +740,15 @@ def _atividade_registro_process(request, template='atividade_registro_form.html'
                             plano=plano,
                             situacao_nova=data['situacao_nova']
                         )
-                        # Planos.save() auto-atualiza Plano.situacao + cria PlanoHistorico
 
-                for ind_id, data in area_geral_map.items():
+                for ind_id, data in parcerias_map.items():
                     ind = indicadores_por_id.get(ind_id)
-                    if data['tis']:
-                        inst = AreaGeral(atividade_registro=atividade_registro, indicador=ind)
+                    if data['parcerias']:
+                        inst = Parcerias(atividade_registro=atividade_registro, indicador=ind)
                         inst.save()
-                        inst.tis.set(data['tis'])
-                        inst.total_tis = inst.tis.count()
+                        inst.parcerias.set(data['parcerias'])
+                        inst.total_parcerias = len(data['parcerias'])
                         inst.save()
-
-                for ind_id, data in area_direto_map.items():
-                    ind = indicadores_por_id.get(ind_id)
-                    if data['tis']:
-                        inst = AreaDireto(atividade_registro=atividade_registro, indicador=ind)
-                        inst.save()
-                        inst.tis.set(data['tis'])
-                        inst.total_tis = inst.tis.count()
-                        inst.save()
-
-                for ind_id, data in area_restrito_map.items():
-                    ind = indicadores_por_id.get(ind_id)
-                    if data['ti'] and data['area_em_ha']:
-                        AreaRestrito.objects.create(
-                            atividade_registro=atividade_registro,
-                            indicador=ind,
-                            ti_id=data['ti'],
-                            area_em_ha=data['area_em_ha']
-                        )
 
                 for ind_id, data in produtos_map.items():
                     ind = indicadores_por_id.get(ind_id)
@@ -1111,42 +775,52 @@ def _atividade_registro_process(request, template='atividade_registro_form.html'
                         inst.leis.set(data['leis'])
                         inst.save()
 
-                for ind_id, data in aplicacao_map.items():
-                    ind = indicadores_por_id.get(ind_id)
-                    if all(v is not None for v in data.values()):
-                        Aplicacao.objects.create(atividade_registro=atividade_registro, indicador=ind, **data)
-
                 for ind_id, data in mobilizados_map.items():
                     ind = indicadores_por_id.get(ind_id)
                     if data['valor_mobilizado'] and data['tipo_apoio'] and data['fonte_apoio']:
                         Mobilizados.objects.create(atividade_registro=atividade_registro, indicador=ind, **data)
 
-                for ind_id, data in modelos_map.items():
-                    ind = indicadores_por_id.get(ind_id)
-                    for modelo_id in data['modelos']:
-                        status = data['status'].get(modelo_id, '')
-                        if status:
-                            AtividadeRegistroModelo.objects.create(
-                                atividade_registro=atividade_registro,
-                                indicador=ind,
-                                modelo_id=int(modelo_id),
-                                status=status
-                            )
-
-                # Criação de registros de IndicadorFinanciador
-                for fin_id, data in fin_treinados_map.items():
+                # ── IndicadorFinanciador — criação paralela ─────────────────────
+                for fin_id, data in fin_pessoas_map.items():
                     ind_fin = indicadores_fin_por_id.get(fin_id)
-                    if all(v is not None for v in data.values()):
-                        Treinados.objects.create(atividade_registro=atividade_registro, indicador_financiador=ind_fin, **data)
+                    Pessoas.objects.create(atividade_registro=atividade_registro, indicador_financiador=ind_fin, **data)
 
-                for fin_id, data in fin_capacitados_map.items():
+                for fin_id, data in fin_organizacoes_map.items():
                     ind_fin = indicadores_fin_por_id.get(fin_id)
-                    if data['organizacoes'] and data['foco_capacitacao']:
-                        inst = Capacitados(atividade_registro=atividade_registro, indicador_financiador=ind_fin, foco_capacitacao=data['foco_capacitacao'])
-                        inst.save()
-                        inst.organizacoes.set(data['organizacoes'])
-                        inst.total_organizacoes = inst.organizacoes.count()
-                        inst.save()
+                    Organizacoes.objects.create(atividade_registro=atividade_registro, indicador_financiador=ind_fin, **data)
+
+                for fin_id, data in fin_area_map.items():
+                    ind_fin = indicadores_fin_por_id.get(fin_id)
+                    _create_m2m_result(Area, atividade_registro, ind_fin, data, True)
+
+                for fin_id, data in fin_areas_protegidas_map.items():
+                    ind_fin = indicadores_fin_por_id.get(fin_id)
+                    _create_m2m_result(AreasProtegidas, atividade_registro, ind_fin, data, True)
+
+                for fin_id, data in fin_eventos_map.items():
+                    ind_fin = indicadores_fin_por_id.get(fin_id)
+                    if any(v for v in data.values()):
+                        Evento.objects.create(atividade_registro=atividade_registro, indicador_financiador=ind_fin, **data)
+
+                for fin_id, data in fin_redes_map.items():
+                    ind_fin = indicadores_fin_por_id.get(fin_id)
+                    if data.get('quantidade'):
+                        Rede.objects.create(atividade_registro=atividade_registro, indicador_financiador=ind_fin, **data)
+
+                for fin_id, data in fin_pequenos_projetos_map.items():
+                    ind_fin = indicadores_fin_por_id.get(fin_id)
+                    if data.get('quantidade'):
+                        PequenoProjeto.objects.create(atividade_registro=atividade_registro, indicador_financiador=ind_fin, **data)
+
+                for fin_id, data in fin_fundos_map.items():
+                    ind_fin = indicadores_fin_por_id.get(fin_id)
+                    if data.get('quantidade'):
+                        Fundo.objects.create(atividade_registro=atividade_registro, indicador_financiador=ind_fin, **data)
+
+                for fin_id, data in fin_outro_map.items():
+                    ind_fin = indicadores_fin_por_id.get(fin_id)
+                    if data.get('descricao') or data.get('valor'):
+                        Outro.objects.create(atividade_registro=atividade_registro, indicador_financiador=ind_fin, **data)
 
                 for fin_id, data in fin_parcerias_map.items():
                     ind_fin = indicadores_fin_por_id.get(fin_id)
@@ -1156,34 +830,6 @@ def _atividade_registro_process(request, template='atividade_registro_form.html'
                         inst.parcerias.set(data['parcerias'])
                         inst.total_parcerias = len(data['parcerias'])
                         inst.save()
-
-                for fin_id, data in fin_area_geral_map.items():
-                    ind_fin = indicadores_fin_por_id.get(fin_id)
-                    if data['tis']:
-                        inst = AreaGeral(atividade_registro=atividade_registro, indicador_financiador=ind_fin)
-                        inst.save()
-                        inst.tis.set(data['tis'])
-                        inst.total_tis = inst.tis.count()
-                        inst.save()
-
-                for fin_id, data in fin_area_direto_map.items():
-                    ind_fin = indicadores_fin_por_id.get(fin_id)
-                    if data['tis']:
-                        inst = AreaDireto(atividade_registro=atividade_registro, indicador_financiador=ind_fin)
-                        inst.save()
-                        inst.tis.set(data['tis'])
-                        inst.total_tis = inst.tis.count()
-                        inst.save()
-
-                for fin_id, data in fin_area_restrito_map.items():
-                    ind_fin = indicadores_fin_por_id.get(fin_id)
-                    if data['ti'] and data['area_em_ha']:
-                        AreaRestrito.objects.create(
-                            atividade_registro=atividade_registro,
-                            indicador_financiador=ind_fin,
-                            ti_id=data['ti'],
-                            area_em_ha=data['area_em_ha']
-                        )
 
                 for fin_id, data in fin_produtos_map.items():
                     ind_fin = indicadores_fin_por_id.get(fin_id)
@@ -1210,11 +856,6 @@ def _atividade_registro_process(request, template='atividade_registro_form.html'
                         inst.leis.set(data['leis'])
                         inst.save()
 
-                for fin_id, data in fin_aplicacao_map.items():
-                    ind_fin = indicadores_fin_por_id.get(fin_id)
-                    if all(v is not None for v in data.values()):
-                        Aplicacao.objects.create(atividade_registro=atividade_registro, indicador_financiador=ind_fin, **data)
-
                 for fin_id, data in fin_mobilizados_map.items():
                     ind_fin = indicadores_fin_por_id.get(fin_id)
                     if data['valor_mobilizado'] and data['tipo_apoio'] and data['fonte_apoio']:
@@ -1234,26 +875,82 @@ def _atividade_registro_process(request, template='atividade_registro_form.html'
     else:
         form = AtividadeRegistroForm()
 
-    organizacoes = Organizacao.objects.all()
     parcerias    = Parceria.objects.all()
     planos       = Plano.objects.all()
     tis_list     = TIs.objects.all()
+    ucs_list     = UC.objects.all()
+    pas_list     = PA.objects.all()
+    tucs_list    = TUC.objects.all()
     produtos     = Produto.objects.all()
     contratos    = Contrato.objects.all()
     leis         = Lei.objects.all()
     modelos_existentes = Modelo.objects.all()
 
+    _foco_options = [
+        {"value": "implementacao", "label": "Implementação melhorada/monitoramento/vigilância"},
+        {"value": "ativ_prod", "label": "Meios de subsistência/cadeia de valor sustentáveis melhorados"},
+        {"value": "governanca", "label": "Fortalecimento institucional/capacitação organizacional/governança"},
+    ]
+
     indicadores_config = {
-        "treinados": [
-            {"name": "total_pessoas", "type": "number", "label": "Total de Pessoas Treinadas"},
+        "pessoas": [
+            {"name": "total_pessoas", "type": "number", "label": "Total de Pessoas"},
             {"name": "homens", "type": "number", "label": "Homens"},
             {"name": "mulheres", "type": "number", "label": "Mulheres"},
             {"name": "jovens", "type": "number", "label": "Jovens"},
-            {"name": "foco_treinamento", "type": "select", "label": "Foco do Treinamento", "options": [
-                {"value": "implementacao", "label": "Implementação melhorada/monitoramento/vigilância"},
-                {"value": "ativ_prod", "label": "Meios de subsistência/cadeia de valor sustentáveis melhorados"},
-                {"value": "governanca", "label": "Fortalecimento institucional/capacitação organizacional/governança"},
+            {"name": "pct_indigenas", "type": "number", "label": "% Indígenas"},
+            {"name": "pct_extrativistas", "type": "number", "label": "% Extrativistas"},
+            {"name": "pct_quilombolas", "type": "number", "label": "% Quilombolas"},
+            {"name": "servidor_publico", "type": "number", "label": "Servidor Público"},
+            {"name": "foco", "type": "select", "label": "Foco", "options": _foco_options},
+        ],
+        "organizacoes": [
+            {"name": "total_organizacoes", "type": "number", "label": "Total de Organizações"},
+            {"name": "org_sociedade_civil", "type": "number", "label": "Sociedade Civil"},
+            {"name": "org_indigenas", "type": "number", "label": "Org. Indígenas"},
+            {"name": "org_extrativistas", "type": "number", "label": "Org. Extrativistas"},
+            {"name": "foco", "type": "select", "label": "Foco", "options": _foco_options},
+        ],
+        "area": [
+            {"name": "ha_restrito", "type": "number", "label": "Área restrita (ha)", "step": "0.01"},
+            {"name": "tis", "type": "checkbox", "label": "TIs", "options": [{'value': t.id, 'label': t.nome} for t in tis_list]},
+            {"name": "ucs", "type": "checkbox", "label": "UCs", "options": [{'value': u.id, 'label': u.nome} for u in ucs_list]},
+            {"name": "pas", "type": "checkbox", "label": "PAs", "options": [{'value': p.id, 'label': p.nome} for p in pas_list]},
+            {"name": "tucs", "type": "checkbox", "label": "TUCs", "options": [{'value': t.id, 'label': t.nome} for t in tucs_list]},
+        ],
+        "areas_protegidas": [
+            {"name": "tis", "type": "checkbox", "label": "TIs", "options": [{'value': t.id, 'label': t.nome} for t in tis_list]},
+            {"name": "ucs", "type": "checkbox", "label": "UCs", "options": [{'value': u.id, 'label': u.nome} for u in ucs_list]},
+            {"name": "pas", "type": "checkbox", "label": "PAs", "options": [{'value': p.id, 'label': p.nome} for p in pas_list]},
+            {"name": "tucs", "type": "checkbox", "label": "TUCs", "options": [{'value': t.id, 'label': t.nome} for t in tucs_list]},
+        ],
+        "eventos": [
+            {"name": "formacoes", "type": "number", "label": "Formações"},
+            {"name": "seminarios", "type": "number", "label": "Seminários"},
+            {"name": "encontros", "type": "number", "label": "Encontros"},
+            {"name": "reunioes", "type": "number", "label": "Reuniões"},
+            {"name": "participantes", "type": "number", "label": "Participantes"},
+        ],
+        "redes": [
+            {"name": "nome", "type": "text", "label": "Nome da Rede"},
+            {"name": "tipo", "type": "select", "label": "Tipo", "options": [
+                {"value": "local", "label": "Local"},
+                {"value": "regional", "label": "Regional"},
+                {"value": "nacional", "label": "Nacional"},
+                {"value": "internacional", "label": "Internacional"},
             ]},
+            {"name": "quantidade", "type": "number", "label": "Quantidade"},
+        ],
+        "pequenos_projetos": [
+            {"name": "quantidade", "type": "number", "label": "Quantidade"},
+            {"name": "tipo", "type": "text", "label": "Tipo"},
+            {"name": "tema", "type": "text", "label": "Tema"},
+            {"name": "valor_total", "type": "number", "label": "Valor Total (R$)", "step": "0.01"},
+        ],
+        "fundos": [
+            {"name": "quantidade", "type": "number", "label": "Quantidade"},
+            {"name": "valor_total", "type": "number", "label": "Valor Total (R$)", "step": "0.01"},
+            {"name": "tipo", "type": "text", "label": "Tipo"},
         ],
         "leis_politicas": [
             {"name": "leis", "type": "checkbox", "label": "Leis", "options": [{'value': l.id, 'label': str(l)} for l in leis]},
@@ -1262,38 +959,14 @@ def _atividade_registro_process(request, template='atividade_registro_form.html'
             {"name": "situacao_nova", "type": "select", "label": "Situação após esta atividade",
              "options": [{"value": s, "label": l} for s, l in Plano.SITUACAO_CHOICES]},
         ],
-        "capacitados": [
-            {"name": "organizacoes", "type": "checkbox", "label": "Organizações", "options": [{'value': o.id, 'label': o.nome} for o in organizacoes]},
-            {"name": "foco_capacitacao", "type": "select", "label": "Foco da Capacitação", "options": [
-                {"value": "implementacao", "label": "Implementação melhorada/monitoramento/vigilância"},
-                {"value": "ativ_prod", "label": "Meios de subsistência/cadeia de valor sustentáveis melhorados"},
-                {"value": "governanca", "label": "Fortalecimento institucional/capacitação organizacional/governança"},
-            ]},
-        ],
         "parcerias": [
             {"name": "parcerias", "type": "checkbox", "label": "Parcerias", "options": [{'value': p.id, 'label': f"{p.nome} - {p.tipo}"} for p in parcerias]},
-        ],
-        "area_geral": [
-            {"name": "tis", "type": "checkbox", "label": "Selecione as TIs para Área Geral", "options": [{'value': t.id, 'label': t.nome} for t in tis_list]},
-        ],
-        "area_direto": [
-            {"name": "tis", "type": "checkbox", "label": "Selecione as TIs para Área Direta", "options": [{'value': t.id, 'label': t.nome} for t in tis_list]},
-        ],
-        "area_restrito": [
-            {"name": "ti", "type": "select", "label": "Selecione a TI para Área Restrita", "options": [{'value': t.id, 'label': t.nome} for t in tis_list]},
-            {"name": "area_em_ha", "type": "number", "label": "Área em hectares (ha)", "step": "0.01"},
         ],
         "produtos": [
             {"name": "produtos", "type": "checkbox", "label": "Produtos", "options": [{'value': p.id, 'label': p.nome} for p in produtos]},
         ],
         "contratos": [
             {"name": "contratos", "type": "checkbox", "label": "Contratos", "options": [{'value': c.id, 'label': str(c)} for c in contratos]},
-        ],
-        "aplicacao": [
-            {"name": "total_pessoas", "type": "number", "label": "Total de Pessoas"},
-            {"name": "homens", "type": "number", "label": "Homens"},
-            {"name": "mulheres", "type": "number", "label": "Mulheres"},
-            {"name": "jovens", "type": "number", "label": "Jovens"},
         ],
         "mobilizados": [
             {"name": "valor_mobilizado", "type": "number", "label": "Valor Mobilizado"},
@@ -1315,8 +988,8 @@ def _atividade_registro_process(request, template='atividade_registro_form.html'
             ]},
         ],
         "outro": [
-            {"name": "modelos", "type": "checkbox", "label": "Selecione os Modelos", "options": [{'value': m.id, 'label': m.nome} for m in modelos_existentes]},
-            {"name": "novos_modelos", "type": "text", "label": "Adicionar Novos Modelos (separados por vírgula)"},
+            {"name": "descricao", "type": "text", "label": "Descrição"},
+            {"name": "valor", "type": "number", "label": "Valor (R$)", "step": "0.01"},
         ],
     }
 

@@ -269,12 +269,7 @@ admin.site.register(TIsIGATI)
 # ---------------------------------------------------------------------------
 
 admin.site.register(AtividadeRegistro)
-admin.site.register(Treinados)
-admin.site.register(Capacitados)
-admin.site.register(Aplicacao)
-admin.site.register(AreaRestrito)
-admin.site.register(AreaDireto)
-admin.site.register(AreaGeral)
+admin.site.register(Pessoas)
 admin.site.register(Leis)
 admin.site.register(Lei)
 admin.site.register(LeiHistorico)
@@ -311,7 +306,6 @@ admin.site.register(Contratos)
 admin.site.register(Contrato)
 admin.site.register(Modelo)
 admin.site.register(AtividadeRegistroModelo)
-admin.site.register(Organizacao)
 
 # ---------------------------------------------------------------------------
 # FUNAI / SAÚDE / EDUCAÇÃO
