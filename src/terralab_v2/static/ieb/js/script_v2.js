@@ -217,8 +217,10 @@ document.addEventListener('DOMContentLoaded', function () {
         body.className = 'indicator-card-body';
 
         const prefix = item.is_fin ? `indicadores_fin_${item.id}` : `indicadores_${item.id}`;
-        const numericFields = config.filter(f => f.type === 'number');
-        const otherFields   = config.filter(f => f.type !== 'number');
+        const desag = item.desagregacoes || {};
+        const activeConfig = config.filter(f => !f.desag_key || desag[f.desag_key]);
+        const numericFields = activeConfig.filter(f => f.type === 'number');
+        const otherFields   = activeConfig.filter(f => f.type !== 'number');
 
         // Seletor de plano para indicadores tipo 'planos'
         if (item.tipo === 'planos' && Array.isArray(item.available_plans)) {
