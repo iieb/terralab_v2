@@ -112,6 +112,7 @@
                             <label for="id_data_final">Data de encerramento <span class="required">*</span></label>
                             {{ form.data_final }}
                             {{ form.data_final.errors }}
+                            <span id="data-final-error" class="field-error" style="display:none;">A data final não pode ser anterior à data de início.</span>
                         </div>
                     </div>
 

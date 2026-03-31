@@ -62,6 +62,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 markValid(field);
             }
         });
+        // Após o loop (que pode ter chamado markValid em dataFinal),
+        // re-verifica o intervalo de datas para step 1
+        if (step === 1) {
+            const di = document.getElementById('id_data_inicio');
+            const df = document.getElementById('id_data_final');
+            const dfErr = document.getElementById('data-final-error');
+            if (di && df && di.value && df.value && df.value < di.value) {
+                if (dfErr) dfErr.style.display = 'block';
+                markInvalid(df);
+                valid = false;
+            }
+        }
         if (!valid) {
             const first = stepEl.querySelector('.invalid');
             if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -174,7 +186,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const projetoId = document.getElementById('id_projeto').value;
         fetch(`${urlIndicadores}?atividade=${atividadeId}&projeto=${projetoId}`)
-            .then(r => r.json())
+            .then(r => {
+                if (!r.ok) {
+                    return r.text().then(text => { throw new Error(`HTTP ${r.status}: ${text.substring(0, 300)}`); });
+                }
+                return r.json();
+            })
             .then(data => {
                 if (data.length === 0) {
                     hint.textContent = 'Nenhum indicador cadastrado para esta atividade.';
@@ -367,6 +384,25 @@ document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('#step-1 [required]').forEach(field => {
         field.addEventListener('change', () => field.value.trim() ? markValid(field) : markInvalid(field));
     });
+
+    // Validação em tempo real: data final não pode ser anterior à data de início
+    const dataInicio = document.getElementById('id_data_inicio');
+    const dataFinal  = document.getElementById('id_data_final');
+    const dataFinalError = document.getElementById('data-final-error');
+    function validateDatas() {
+        if (!dataInicio || !dataFinal || !dataFinalError) return;
+        if (dataInicio.value && dataFinal.value && dataFinal.value < dataInicio.value) {
+            dataFinalError.style.display = 'block';
+            markInvalid(dataFinal);
+        } else {
+            dataFinalError.style.display = 'none';
+            if (dataFinal.value) markValid(dataFinal);
+        }
+    }
+    if (dataInicio && dataFinal) {
+        dataInicio.addEventListener('change', validateDatas);
+        dataFinal.addEventListener('change', validateDatas);
+    }
 
     // ----------------------------------------------------------------
     // Feedback visual nos campos de upload de arquivo
