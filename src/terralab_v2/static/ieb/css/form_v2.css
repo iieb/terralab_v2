@@ -216,6 +216,12 @@ textarea {
     color: #c0392b;
     font-size: 0.82rem;
 }
+.field-error {
+    display: block;
+    margin: 4px 0 0;
+    color: #c0392b;
+    font-size: 0.82rem;
+}
 
 /* ---- File upload ---- */
 .file-upload-area {
