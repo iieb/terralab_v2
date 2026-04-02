@@ -16,5 +16,3 @@ __pycache__/
 .DS_Store
 **/.DS_Store
 
-# Artefatos gerados localmente
-src/indicadores_visual.html

@@ -1,0 +1,1326 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema de Indicadores — Lógica Visual</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f4f6f9; color: #1a1a2e; }
+
+  /* ── HEADER ── */
+  .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%);
+    color: white; padding: 2.5rem 2rem 2rem; text-align: center; }
+  .header h1 { font-size: 1.8rem; font-weight: 700; letter-spacing: -0.5px; }
+  .header p { margin-top: .5rem; opacity: .75; font-size: .95rem; }
+
+  /* ── FLOW DIAGRAM ── */
+  .flow-section { background: white; padding: 2rem; border-bottom: 1px solid #e2e8f0; }
+  .flow-section h2 { font-size: 1rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1px; color: #64748b; margin-bottom: 1.5rem; text-align: center; }
+  .flow { display: flex; align-items: center; justify-content: center;
+    gap: 0; flex-wrap: wrap; }
+  .flow-box { background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 12px;
+    padding: .9rem 1.4rem; text-align: center; min-width: 120px; }
+  .flow-box .label { font-size: .7rem; text-transform: uppercase; letter-spacing: .8px;
+    color: #94a3b8; font-weight: 600; margin-bottom: .3rem; }
+  .flow-box .name { font-size: .95rem; font-weight: 700; color: #1e293b; }
+  .flow-box .sub { font-size: .75rem; color: #64748b; margin-top: .2rem; }
+  .flow-box.highlight { background: #eff6ff; border-color: #3b82f6; }
+  .flow-box.highlight .name { color: #1d4ed8; }
+  .flow-arrow { font-size: 1.5rem; color: #cbd5e1; padding: 0 .5rem; flex-shrink: 0; }
+  .flow-note { text-align: center; margin-top: 1.2rem; font-size: .82rem; color: #64748b;
+    background: #f8fafc; border-radius: 8px; padding: .6rem 1.2rem; display: inline-block; }
+
+  /* ── TIPOS OVERVIEW BOX ── */
+  .tipos-box { background: white; padding: 1.75rem 2rem; border-bottom: 1px solid #e2e8f0; }
+  .tipos-box-title { font-size: .75rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1px; color: #94a3b8; margin-bottom: 1.1rem; text-align: center; }
+  .tipos-grid { display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: .5rem;
+    max-width: 1100px; margin: 0 auto; }
+  .tipo-pill { display: flex; align-items: center; gap: .55rem;
+    border-radius: 10px; padding: .5rem .85rem; border: 1px solid;
+    cursor: default; transition: transform .1s; }
+  .tipo-pill:hover { transform: translateY(-1px); }
+  .tipo-pill .tp-num { font-size: .65rem; font-weight: 700; width: 18px; height: 18px;
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; }
+  .tipo-pill .tp-body { display: flex; flex-direction: column; min-width: 0; }
+  .tipo-pill .tp-name { font-size: .82rem; font-weight: 700; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; }
+  .tipo-pill .tp-key { font-family: 'Courier New', monospace; font-size: .65rem;
+    opacity: .7; margin-top: .05rem; }
+  .tipo-pill .tp-model { font-size: .65rem; font-weight: 600; margin-top: .1rem;
+    opacity: .65; }
+
+  /* pill colours by category */
+  .tp-social  { background: #f0fdf4; border-color: #86efac; color: #15803d; }
+  .tp-social .tp-num { background: #22c55e; color: white; }
+
+  .tp-territ  { background: #fffbeb; border-color: #fcd34d; color: #92400e; }
+  .tp-territ .tp-num { background: #f59e0b; color: white; }
+
+  .tp-proc    { background: #faf5ff; border-color: #d8b4fe; color: #5b21b6; }
+  .tp-proc .tp-num { background: #8b5cf6; color: white; }
+
+  .tp-fin     { background: #eff6ff; border-color: #93c5fd; color: #1e40af; }
+  .tp-fin .tp-num { background: #3b82f6; color: white; }
+
+  .tp-art     { background: #ecfeff; border-color: #67e8f9; color: #0e7490; }
+  .tp-art .tp-num { background: #06b6d4; color: white; }
+
+  .tp-livre   { background: #f8fafc; border-color: #cbd5e1; color: #475569; }
+  .tp-livre .tp-num { background: #94a3b8; color: white; }
+
+  .tipos-legend { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: center;
+    margin-top: 1rem; }
+  .tipos-legend-item { display: flex; align-items: center; gap: .35rem;
+    font-size: .72rem; color: #64748b; }
+  .tipos-legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+  /* ── PRINCIPLE BOX ── */
+  .principle { background: #fefce8; border-left: 4px solid #eab308;
+    margin: 0; padding: 1rem 1.5rem; }
+  .principle strong { color: #713f12; }
+  .principle p { font-size: .88rem; color: #713f12; line-height: 1.5; }
+
+  /* ── CATEGORY SECTIONS ── */
+  .categories { padding: 2rem; max-width: 1400px; margin: 0 auto; }
+  .cat-header { display: flex; align-items: center; gap: .75rem;
+    margin: 2rem 0 1rem; padding-bottom: .5rem; border-bottom: 2px solid; }
+  .cat-header h2 { font-size: 1.05rem; font-weight: 700; }
+  .cat-icon { width: 32px; height: 32px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem; flex-shrink: 0; }
+
+  /* Category colors */
+  .cat-social .cat-header { border-color: #22c55e; }
+  .cat-social .cat-icon { background: #dcfce7; }
+  .cat-social .cat-header h2 { color: #15803d; }
+
+  .cat-territorial .cat-header { border-color: #f59e0b; }
+  .cat-territorial .cat-icon { background: #fef3c7; }
+  .cat-territorial .cat-header h2 { color: #92400e; }
+
+  .cat-processos .cat-header { border-color: #8b5cf6; }
+  .cat-processos .cat-icon { background: #ede9fe; }
+  .cat-processos .cat-header h2 { color: #5b21b6; }
+
+  .cat-financeiro .cat-header { border-color: #3b82f6; }
+  .cat-financeiro .cat-icon { background: #dbeafe; }
+  .cat-financeiro .cat-header h2 { color: #1e40af; }
+
+  .cat-articulacao .cat-header { border-color: #06b6d4; }
+  .cat-articulacao .cat-icon { background: #cffafe; }
+  .cat-articulacao .cat-header h2 { color: #0e7490; }
+
+  .cat-livre .cat-header { border-color: #94a3b8; }
+  .cat-livre .cat-icon { background: #f1f5f9; }
+  .cat-livre .cat-header h2 { color: #475569; }
+
+  /* ── TYPE GRID ── */
+  .type-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 1.25rem; }
+
+  /* ── TYPE CARD ── */
+  .type-card { background: white; border-radius: 14px; overflow: hidden;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+  .type-card-header { padding: 1rem 1.2rem .8rem;
+    display: flex; align-items: flex-start; justify-content: space-between; gap: .5rem; }
+  .type-card-header .left {}
+  .type-name { font-size: 1.1rem; font-weight: 700; color: #1e293b; }
+  .type-key { font-family: 'Courier New', monospace; font-size: .72rem;
+    background: #f1f5f9; color: #475569; padding: .15rem .5rem; border-radius: 4px;
+    display: inline-block; margin-top: .25rem; }
+  .model-badge { background: #1e293b; color: white; font-size: .72rem;
+    font-weight: 600; padding: .25rem .65rem; border-radius: 20px;
+    white-space: nowrap; align-self: flex-start; margin-top: .1rem; }
+
+  /* ── DESAG SECTION ── */
+  .desag-section { padding: .6rem 1.2rem; border-top: 1px solid #f1f5f9; }
+  .desag-label { font-size: .68rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .8px; color: #94a3b8; margin-bottom: .5rem; }
+  .desag-chips { display: flex; flex-wrap: wrap; gap: .35rem; }
+  .chip { font-size: .72rem; padding: .22rem .65rem; border-radius: 20px;
+    font-weight: 500; border: 1px solid; }
+  .chip-required { background: #eff6ff; border-color: #93c5fd; color: #1d4ed8; }
+  .chip-optional { background: #f0fdf4; border-color: #86efac; color: #15803d; }
+  .chip-flag { background: #fdf4ff; border-color: #d8b4fe; color: #6b21a8; }
+  .chip-group { background: #fff7ed; border-color: #fed7aa; color: #c2410c; }
+  .chip-future { background: #f8fafc; border-color: #cbd5e1; color: #94a3b8;
+    font-style: italic; }
+
+  /* ── EXAMPLES SECTION ── */
+  .examples-section { padding: .6rem 1.2rem 1rem; border-top: 1px solid #f1f5f9; }
+  .examples-label { font-size: .68rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .8px; color: #94a3b8; margin-bottom: .6rem; }
+  .example { background: #f8fafc; border-radius: 8px; padding: .65rem .85rem;
+    margin-bottom: .5rem; border-left: 3px solid #e2e8f0; }
+  .example:last-child { margin-bottom: 0; }
+  .ex-name { font-size: .82rem; font-weight: 700; color: #1e293b; }
+  .ex-config { font-size: .75rem; color: #64748b; margin-top: .25rem;
+    font-family: 'Courier New', monospace; line-height: 1.5; }
+  .ex-form { font-size: .75rem; color: #475569; margin-top: .3rem;
+    display: flex; flex-wrap: wrap; gap: .25rem; align-items: center; }
+  .ex-form-label { color: #94a3b8; }
+  .form-field { background: white; border: 1px solid #d1d5db; border-radius: 4px;
+    padding: .15rem .4rem; font-size: .72rem; color: #374151; }
+  .form-select { background: white; border: 1px solid #d1d5db; border-radius: 4px;
+    padding: .15rem .4rem; font-size: .72rem; color: #374151;
+    padding-right: 1rem; }
+
+  /* ── SUM MAP ── */
+  .sum-map { padding: .5rem 1.2rem .8rem; border-top: 1px solid #f1f5f9; }
+  .sum-map-inner { background: #1e293b; border-radius: 6px; padding: .5rem .8rem;
+    font-family: 'Courier New', monospace; font-size: .73rem; color: #94a3b8; }
+  .sum-map-inner .key { color: #fbbf24; }
+  .sum-map-inner .model { color: #34d399; }
+  .sum-map-inner .field { color: #93c5fd; }
+
+  /* ── NOTES ── */
+  .note { font-size: .75rem; color: #64748b; padding: .4rem 1.2rem .8rem;
+    border-top: 1px solid #f1f5f9; font-style: italic; }
+
+  /* ── LEGEND ── */
+  .legend { background: white; border-radius: 12px; padding: 1rem 1.5rem;
+    margin-bottom: 1.5rem; border: 1px solid #e2e8f0;
+    display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; }
+  .legend-title { font-size: .75rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .8px; color: #94a3b8; margin-right: .5rem; }
+
+  /* ── PCT GROUP VISUAL ── */
+  .pct-group { background: #fff7ed; border: 1px dashed #fdba74;
+    border-radius: 8px; padding: .4rem .7rem; margin-top: .3rem; }
+  .pct-label { font-size: .68rem; font-weight: 700; color: #c2410c;
+    margin-bottom: .3rem; }
+
+  /* ── SCORE BAR ── */
+  .score-bar { display: flex; gap: 2px; margin-top: .4rem; }
+  .score-step { flex: 1; height: 6px; border-radius: 3px; background: #e2e8f0; }
+  .score-step.active { background: #8b5cf6; }
+  .score-labels { display: flex; justify-content: space-between;
+    font-size: .65rem; color: #94a3b8; margin-top: .2rem; }
+
+  /* ── FILTER STATES ── */
+  .tipo-pill { cursor: pointer; }
+  .tipo-pill.is-active { box-shadow: 0 0 0 2px currentColor; transform: translateY(-2px); }
+  .tipo-pill.is-dimmed { opacity: .3; transform: none; }
+
+  .tipo-pill-todos { background: #1e293b; border-color: #1e293b; color: white;
+    cursor: pointer; transition: transform .1s, opacity .1s; }
+  .tipo-pill-todos:hover { transform: translateY(-1px); }
+  .tipo-pill-todos .tp-num { background: white; color: #1e293b; }
+  .tipo-pill-todos .tp-name { color: white; }
+  .tipo-pill-todos .tp-key { color: #94a3b8; }
+
+  .type-card { transition: opacity .2s, transform .2s; }
+  .type-card.is-hidden { display: none; }
+
+  .cat-section { transition: opacity .2s; }
+  .cat-section.is-hidden { display: none; }
+
+  .filter-status { text-align: center; font-size: .8rem; color: #64748b;
+    padding: .5rem; margin-top: .75rem; min-height: 1.5rem; }
+  .filter-status strong { color: #1e293b; }
+
+  @media (max-width: 600px) {
+    .type-grid { grid-template-columns: 1fr; }
+    .flow { flex-direction: column; }
+    .flow-arrow { transform: rotate(90deg); }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Sistema de Indicadores — Lógica Visual</h1>
+  <p>Tipos, desagregações e exemplos de composição de Indicadores</p>
+</div>
+
+<!-- TIPOS OVERVIEW -->
+<div class="tipos-box">
+  <div class="tipos-box-title">15 Tipos de Indicadores — visão geral</div>
+  <div class="tipos-grid">
+
+    <!-- Todos -->
+    <div class="tipo-pill tipo-pill-todos" data-filter="todos">
+      <div class="tp-num">✕</div>
+      <div class="tp-body">
+        <span class="tp-name">Todos</span>
+        <span class="tp-key">resetar filtro</span>
+      </div>
+    </div>
+
+    <!-- Social -->
+    <div class="tipo-pill tp-social" data-filter="pessoas">
+      <div class="tp-num">1</div>
+      <div class="tp-body">
+        <span class="tp-name">Pessoas</span>
+        <span class="tp-key">tipo='pessoas'</span>
+        <span class="tp-model">→ Pessoas</span>
+      </div>
+    </div>
+    <div class="tipo-pill tp-social" data-filter="organizacoes">
+      <div class="tp-num">2</div>
+      <div class="tp-body">
+        <span class="tp-name">Organizações</span>
+        <span class="tp-key">tipo='organizacoes'</span>
+        <span class="tp-model">→ Organizacoes</span>
+      </div>
+    </div>
+
+    <!-- Territorial -->
+    <div class="tipo-pill tp-territ" data-filter="area">
+      <div class="tp-num">3</div>
+      <div class="tp-body">
+        <span class="tp-name">Área</span>
+        <span class="tp-key">tipo='area'</span>
+        <span class="tp-model">→ Area</span>
+      </div>
+    </div>
+    <div class="tipo-pill tp-territ" data-filter="areas_protegidas">
+      <div class="tp-num">4</div>
+      <div class="tp-body">
+        <span class="tp-name">Áreas Protegidas</span>
+        <span class="tp-key">tipo='areas_protegidas'</span>
+        <span class="tp-model">→ AreasProtegidas</span>
+      </div>
+    </div>
+
+    <!-- Processos -->
+    <div class="tipo-pill tp-proc" data-filter="eventos">
+      <div class="tp-num">5</div>
+      <div class="tp-body">
+        <span class="tp-name">Eventos</span>
+        <span class="tp-key">tipo='eventos'</span>
+        <span class="tp-model">→ Evento</span>
+      </div>
+    </div>
+    <div class="tipo-pill tp-proc" data-filter="planos">
+      <div class="tp-num">6</div>
+      <div class="tp-body">
+        <span class="tp-name">Planos</span>
+        <span class="tp-key">tipo='planos'</span>
+        <span class="tp-model">→ Planos</span>
+      </div>
+    </div>
+    <div class="tipo-pill tp-proc" data-filter="parcerias">
+      <div class="tp-num">7</div>
+      <div class="tp-body">
+        <span class="tp-name">Parcerias</span>
+        <span class="tp-key">tipo='parcerias'</span>
+        <span class="tp-model">→ Parcerias</span>
+      </div>
+    </div>
+    <div class="tipo-pill tp-proc" data-filter="leis_politicas">
+      <div class="tp-num">8</div>
+      <div class="tp-body">
+        <span class="tp-name">Leis e Políticas</span>
+        <span class="tp-key">tipo='leis_politicas'</span>
+        <span class="tp-model">→ Leis</span>
+      </div>
+    </div>
+
+    <!-- Financeiro -->
+    <div class="tipo-pill tp-fin" data-filter="mobilizados">
+      <div class="tp-num">9</div>
+      <div class="tp-body">
+        <span class="tp-name">Mobilizados</span>
+        <span class="tp-key">tipo='mobilizados'</span>
+        <span class="tp-model">→ Mobilizados</span>
+      </div>
+    </div>
+    <div class="tipo-pill tp-fin" data-filter="contratos">
+      <div class="tp-num">10</div>
+      <div class="tp-body">
+        <span class="tp-name">Contratos</span>
+        <span class="tp-key">tipo='contratos'</span>
+        <span class="tp-model">→ Contratos</span>
+      </div>
+    </div>
+    <div class="tipo-pill tp-fin" data-filter="produtos">
+      <div class="tp-num">11</div>
+      <div class="tp-body">
+        <span class="tp-name">Produtos</span>
+        <span class="tp-key">tipo='produtos'</span>
+        <span class="tp-model">→ Produtos</span>
+      </div>
+    </div>
+    <div class="tipo-pill tp-fin" data-filter="fundos">
+      <div class="tp-num">12</div>
+      <div class="tp-body">
+        <span class="tp-name">Fundos</span>
+        <span class="tp-key">tipo='fundos'</span>
+        <span class="tp-model">→ Fundo</span>
+      </div>
+    </div>
+    <div class="tipo-pill tp-fin" data-filter="pequenos_projetos">
+      <div class="tp-num">13</div>
+      <div class="tp-body">
+        <span class="tp-name">Pequenos Projetos</span>
+        <span class="tp-key">tipo='pequenos_projetos'</span>
+        <span class="tp-model">→ PequenoProjeto</span>
+      </div>
+    </div>
+
+    <!-- Articulação -->
+    <div class="tipo-pill tp-art" data-filter="redes">
+      <div class="tp-num">14</div>
+      <div class="tp-body">
+        <span class="tp-name">Redes</span>
+        <span class="tp-key">tipo='redes'</span>
+        <span class="tp-model">→ Rede</span>
+      </div>
+    </div>
+
+    <!-- Livre -->
+    <div class="tipo-pill tp-livre" data-filter="outro">
+      <div class="tp-num">15</div>
+      <div class="tp-body">
+        <span class="tp-name">Outro</span>
+        <span class="tp-key">tipo='outro'</span>
+        <span class="tp-model">→ Outro</span>
+      </div>
+    </div>
+
+  </div><!-- /tipos-grid -->
+  <div class="filter-status" id="filter-status"></div>
+
+  <div class="tipos-legend">
+    <div class="tipos-legend-item">
+      <div class="tipos-legend-dot" style="background:#22c55e"></div> Social
+    </div>
+    <div class="tipos-legend-item">
+      <div class="tipos-legend-dot" style="background:#f59e0b"></div> Territorial
+    </div>
+    <div class="tipos-legend-item">
+      <div class="tipos-legend-dot" style="background:#8b5cf6"></div> Processos e Governança
+    </div>
+    <div class="tipos-legend-item">
+      <div class="tipos-legend-dot" style="background:#3b82f6"></div> Financeiro e Produtos
+    </div>
+    <div class="tipos-legend-item">
+      <div class="tipos-legend-dot" style="background:#06b6d4"></div> Articulação
+    </div>
+    <div class="tipos-legend-item">
+      <div class="tipos-legend-dot" style="background:#94a3b8"></div> Livre
+    </div>
+  </div>
+</div><!-- /tipos-box -->
+
+<div class="principle">
+  <p><strong>Princípio central:</strong> o <strong>tipo</strong> define a <em>estrutura</em> do registro (qual result model usar, quais campos existem). O <strong>nome do Indicador</strong> define o <em>conteúdo</em>. As <strong>desagregações</strong> configuram quais campos aparecem no formulário para aquele indicador específico.</p>
+</div>
+
+<!-- FLOW -->
+<div class="flow-section">
+  <h2>Fluxo do sistema</h2>
+  <div class="flow">
+    <div class="flow-box">
+      <div class="label">Catálogo</div>
+      <div class="name">TIPO</div>
+      <div class="sub">15 tipos fixos</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box highlight">
+      <div class="label">Admin configura</div>
+      <div class="name">Indicador</div>
+      <div class="sub">nome + tipo + desag_*</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box">
+      <div class="label">Vincula</div>
+      <div class="name">ProjetoIndicador</div>
+      <div class="sub">Indicador ↔ Projeto</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box">
+      <div class="label">Planeja</div>
+      <div class="name">Meta</div>
+      <div class="sub">base · meta · data</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box">
+      <div class="label">Registra</div>
+      <div class="name">Result Model</div>
+      <div class="sub">Pessoas / Area / etc.</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box">
+      <div class="label">Calcula</div>
+      <div class="name">realizado</div>
+      <div class="sub">SUM_MAP → % meta</div>
+    </div>
+  </div>
+  <div style="text-align:center">
+    <span class="flow-note">O formulário de registro renderiza campos dinâmicos baseados no <strong>tipo</strong> + <strong>desag_*</strong> do Indicador selecionado</span>
+  </div>
+</div>
+
+<!-- LEGEND -->
+<div class="categories">
+  <div class="legend">
+    <span class="legend-title">Chips</span>
+    <span class="chip chip-required">campo fixo</span>
+    <span class="chip chip-optional">desag_* opcional</span>
+    <span class="chip chip-flag">tem_foco / flag</span>
+    <span class="chip chip-group">grupo expandível</span>
+    <span class="chip chip-future">evolução futura</span>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       CATEGORIA: SOCIAL
+  ══════════════════════════════════════════════════════════════ -->
+  <div class="cat-social cat-section" data-cat="social">
+    <div class="cat-header">
+      <div class="cat-icon">🧑‍🤝‍🧑</div>
+      <h2>Social — Pessoas e Organizações</h2>
+    </div>
+    <div class="type-grid">
+
+      <!-- PESSOAS -->
+      <div class="type-card" data-tipo="pessoas">
+        <div class="type-card-header">
+          <div class="left">
+            <div class="type-name">Pessoas</div>
+            <div class="type-key">tipo='pessoas'</div>
+          </div>
+          <div class="model-badge">→ Pessoas</div>
+        </div>
+
+        <div class="desag-section">
+          <div class="desag-label">Campos disponíveis</div>
+          <div class="desag-chips">
+            <span class="chip chip-required">total_pessoas (manual)</span>
+            <span class="chip chip-optional">desag_homens</span>
+            <span class="chip chip-optional">desag_mulheres</span>
+            <span class="chip chip-optional">desag_jovens</span>
+            <span class="chip chip-optional">desag_servidor_publico</span>
+            <span class="chip chip-flag">tem_foco</span>
+          </div>
+          <div class="pct-group" style="margin-top:.5rem">
+            <div class="pct-label">🌿 Grupo PCT (desag_pct) — Povos e Comunidades Tradicionais</div>
+            <div class="desag-chips">
+              <span class="chip chip-group">desag_pct_indigenas</span>
+              <span class="chip chip-group">desag_pct_extrativistas</span>
+              <span class="chip chip-group">desag_pct_quilombolas</span>
+              <span class="chip chip-future">+ outros (futuro)</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="examples-section">
+          <div class="examples-label">Exemplos de indicadores</div>
+
+          <div class="example">
+            <div class="ex-name">🏫 Pessoas Treinadas em PGTA</div>
+            <div class="ex-config">desag_mulheres=✓  desag_homens=✓  desag_pct=✓  desag_pct_indigenas=✓</div>
+            <div class="ex-form">
+              <span class="ex-form-label">Formulário →</span>
+              <span class="form-field">Total: 45</span>
+              <span class="form-field">Mulheres: 22</span>
+              <span class="form-field">Homens: 23</span>
+              <span class="form-field">PCT Indígenas: 38</span>
+            </div>
+          </div>
+
+          <div class="example">
+            <div class="ex-name">🌱 Aplicadores de Práticas Agroecológicas</div>
+            <div class="ex-config">desag_pct=✓  desag_pct_indigenas=✓  desag_pct_extrativistas=✓  tem_foco=✓</div>
+            <div class="ex-form">
+              <span class="ex-form-label">Formulário →</span>
+              <span class="form-field">Total: 120</span>
+              <span class="form-field">PCT Indígenas: 80</span>
+              <span class="form-field">PCT Extrativistas: 40</span>
+              <span class="form-select">Foco: Sociobiodiversidade ▾</span>
+            </div>
+          </div>
+
+          <div class="example">
+            <div class="ex-name">🏛️ Servidores Públicos Sensibilizados</div>
+            <div class="ex-config">desag_servidor_publico=✓  (sem outros campos)</div>
+            <div class="ex-form">
+              <span class="ex-form-label">Formulário →</span>
+              <span class="form-field">Total: 15</span>
+              <span class="form-field">Servidores públicos: 15</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="sum-map">
+          <div class="sum-map-inner">
+            <span class="key">'pessoas'</span>: (<span class="model">Pessoas</span>, <span class="field">'total_pessoas'</span>)
+          </div>
+        </div>
+      </div>
+
+      <!-- ORGANIZAÇÕES -->
+      <div class="type-card" data-tipo="organizacoes">
+        <div class="type-card-header">
+          <div class="left">
+            <div class="type-name">Organizações</div>
+            <div class="type-key">tipo='organizacoes'</div>
+          </div>
+          <div class="model-badge">→ Organizacoes</div>
+        </div>
+
+        <div class="desag-section">
+          <div class="desag-label">Campos disponíveis</div>
+          <div class="desag-chips">
+            <span class="chip chip-required">total_organizacoes (manual)</span>
+            <span class="chip chip-optional">desag_org_sc (Soc. Civil)</span>
+            <span class="chip chip-optional">desag_org_indigenas</span>
+            <span class="chip chip-optional">desag_org_extrativistas</span>
+            <span class="chip chip-flag">tem_foco</span>
+            <span class="chip chip-future">M2M OIsLocal / OIsRegional (futuro)</span>
+          </div>
+        </div>
+
+        <div class="examples-section">
+          <div class="examples-label">Exemplos de indicadores</div>
+
+          <div class="example">
+            <div class="ex-name">🤝 Organizações Capacitadas em Gestão</div>
+            <div class="ex-config">desag_org_indigenas=✓  desag_org_sc=✓  tem_foco=✓</div>
+            <div class="ex-form">
+              <span class="ex-form-label">Formulário →</span>
+              <span class="form-field">Total: 8</span>
+              <span class="form-field">Org. Indígenas: 5</span>
+              <span class="form-field">Soc. Civil: 3</span>
+              <span class="form-select">Foco: Governança ▾</span>
+            </div>
+          </div>
+
+          <div class="example">
+            <div class="ex-name">🌿 Organizações Extrativistas Beneficiárias</div>
+            <div class="ex-config">desag_org_extrativistas=✓  (sem foco)</div>
+            <div class="ex-form">
+              <span class="ex-form-label">Formulário →</span>
+              <span class="form-field">Total: 12</span>
+              <span class="form-field">Extrativistas: 12</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="sum-map">
+          <div class="sum-map-inner">
+            <span class="key">'organizacoes'</span>: (<span class="model">Organizacoes</span>, <span class="field">'total_organizacoes'</span>)
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /type-grid -->
+  </div><!-- /cat-social -->
+
+  <!-- ══════════════════════════════════════════════════════════════
+       CATEGORIA: TERRITORIAL
+  ══════════════════════════════════════════════════════════════ -->
+  <div class="cat-territorial cat-section" data-cat="territorial">
+    <div class="cat-header">
+      <div class="cat-icon">🗺️</div>
+      <h2>Territorial — Área e Áreas Protegidas</h2>
+    </div>
+    <div class="type-grid">
+
+      <!-- ÁREA -->
+      <div class="type-card" data-tipo="area">
+        <div class="type-card-header">
+          <div class="left">
+            <div class="type-name">Área</div>
+            <div class="type-key">tipo='area'</div>
+          </div>
+          <div class="model-badge">→ Area</div>
+        </div>
+
+        <div class="desag-section">
+          <div class="desag-label">3 modos configuráveis (um por indicador)</div>
+          <div class="desag-chips" style="margin-bottom:.5rem">
+            <span class="chip chip-optional">desag_restrito → HA manual</span>
+          </div>
+          <div class="desag-chips" style="margin-bottom:.3rem">
+            <span class="chip chip-optional">desag_direto → M2M áreas + soma HA</span>
+          </div>
+          <div class="desag-chips" style="margin-bottom:.5rem">
+            <span class="chip chip-optional">desag_indireto → M2M áreas + soma HA</span>
+          </div>
+          <div class="desag-label" style="margin-top:.3rem">Seletores de área (compartilhados)</div>
+          <div class="desag-chips">
+            <span class="chip chip-optional">desag_ti (Terra Indígena)</span>
+            <span class="chip chip-optional">desag_uc (Unidade de Conservação)</span>
+            <span class="chip chip-optional">desag_pa (Proj. Assentamento)</span>
+            <span class="chip chip-optional">desag_tuc (Terr. Uso Comum)</span>
+          </div>
+        </div>
+
+        <div class="examples-section">
+          <div class="examples-label">Exemplos de indicadores</div>
+
+          <div class="example">
+            <div class="ex-name">🌳 ha de SAF Plantado (modo restrito)</div>
+            <div class="ex-config">desag_restrito=✓</div>
+            <div class="ex-form">
+              <span class="ex-form-label">Formulário →</span>
+              <span class="form-field">HA: 45,5</span>
+              <em style="font-size:.72rem;color:#94a3b8"> → total_ha = 45,5</em>
+            </div>
+          </div>
+
+          <div class="example">
+            <div class="ex-name">🛡️ ha de TIs com Monitoramento (modo direto)</div>
+            <div class="ex-config">desag_direto=✓  desag_ti=✓</div>
+            <div class="ex-form">
+              <span class="ex-form-label">Formulário →</span>
+              <span class="form-select">Selecionar TIs ▾</span>
+              <em style="font-size:.72rem;color:#94a3b8"> → total_ha = soma automática</em>
+            </div>
+          </div>
+
+          <div class="example">
+            <div class="ex-name">🌿 ha de Influência Indireta (modo indireto)</div>
+            <div class="ex-config">desag_indireto=✓  desag_ti=✓  desag_uc=✓</div>
+            <div class="ex-form">
+              <span class="ex-form-label">Formulário →</span>
+              <span class="form-select">Selecionar TIs ▾</span>
+              <span class="form-select">Selecionar UCs ▾</span>
+              <em style="font-size:.72rem;color:#94a3b8"> → total_ha calculado</em>
+            </div>
+          </div>
+        </div>
+
+        <div class="sum-map">
+          <div class="sum-map-inner">
+            <span class="key">'area'</span>: (<span class="model">Area</span>, <span class="field">'total_ha'</span>)
+          </div>
+        </div>
+        <div class="note">total_ha calculado no save(): ha_restrito OU soma das áreas M2M selecionadas</div>
+      </div>
+
+      <!-- ÁREAS PROTEGIDAS -->
+      <div class="type-card" data-tipo="areas_protegidas">
+        <div class="type-card-header">
+          <div class="left">
+            <div class="type-name">Áreas Protegidas</div>
+            <div class="type-key">tipo='areas_protegidas'</div>
+          </div>
+          <div class="model-badge">→ AreasProtegidas</div>
+        </div>
+
+        <div class="desag-section">
+          <div class="desag-label">Conta unidades + registra HA total</div>
+          <div class="desag-chips">
+            <span class="chip chip-optional">desag_ti</span>
+            <span class="chip chip-optional">desag_uc</span>
+            <span class="chip chip-optional">desag_pa</span>
+            <span class="chip chip-optional">desag_tuc</span>
+          </div>
+          <div class="desag-chips" style="margin-top:.4rem">
+            <span class="chip chip-required">total_tis / total_ucs / total_pas / total_tucs</span>
+            <span class="chip chip-required">total (soma)</span>
+            <span class="chip chip-required">total_ha (soma HA)</span>
+          </div>
+        </div>
+
+        <div class="examples-section">
+          <div class="examples-label">Exemplos — distinção com tipo='area'</div>
+
+          <div class="example">
+            <div class="ex-name">🏞️ TIs e UCs Beneficiadas (conta unidades)</div>
+            <div class="ex-config">desag_ti=✓  desag_uc=✓</div>
+            <div class="ex-form">
+              <span class="ex-form-label">Formulário →</span>
+              <span class="form-select">Selecionar TIs ▾</span>
+              <span class="form-select">Selecionar UCs ▾</span>
+            </div>
+            <div class="ex-form" style="margin-top:.3rem">
+              <span class="ex-form-label">Resultado →</span>
+              <span class="form-field">total_tis: 3</span>
+              <span class="form-field">total_ucs: 2</span>
+              <span class="form-field">total: 5</span>
+              <span class="form-field">total_ha: 620.000</span>
+            </div>
+          </div>
+
+          <div class="example" style="background:#fff7ed;border-left-color:#f59e0b">
+            <div class="ex-name" style="color:#92400e">⚡ A mesma atividade pode ter os dois:</div>
+            <div class="ex-config" style="color:#c2410c">Indicador A (area, direto): → ha de TIs = 185.000 ha
+Indicador B (areas_protegidas): → 3 TIs monitoradas</div>
+          </div>
+        </div>
+
+        <div class="sum-map">
+          <div class="sum-map-inner">
+            <span class="key">'areas_protegidas'</span>: (<span class="model">AreasProtegidas</span>, <span class="field">'total'</span>)
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div><!-- /cat-territorial -->
+
+  <!-- ══════════════════════════════════════════════════════════════
+       CATEGORIA: PROCESSOS
+  ══════════════════════════════════════════════════════════════ -->
+  <div class="cat-processos cat-section" data-cat="processos">
+    <div class="cat-header">
+      <div class="cat-icon">⚙️</div>
+      <h2>Processos e Governança</h2>
+    </div>
+    <div class="type-grid">
+
+      <!-- EVENTOS -->
+      <div class="type-card" data-tipo="eventos">
+        <div class="type-card-header">
+          <div class="left">
+            <div class="type-name">Eventos</div>
+            <div class="type-key">tipo='eventos'</div>
+          </div>
+          <div class="model-badge">→ Evento</div>
+        </div>
+        <div class="desag-section">
+          <div class="desag-label">Modalidades + participantes</div>
+          <div class="desag-chips">
+            <span class="chip chip-optional">desag_formacoes</span>
+            <span class="chip chip-optional">desag_seminarios</span>
+            <span class="chip chip-optional">desag_encontros</span>
+            <span class="chip chip-optional">desag_reunioes</span>
+            <span class="chip chip-flag">desag_participantes</span>
+            <span class="chip chip-required">total (auto)</span>
+          </div>
+        </div>
+        <div class="examples-section">
+          <div class="examples-label">Exemplos</div>
+          <div class="example">
+            <div class="ex-name">📚 Formações e Seminários Realizados</div>
+            <div class="ex-config">desag_formacoes=✓  desag_seminarios=✓  desag_participantes=✓</div>
+            <div class="ex-form">
+              <span class="form-field">Formações: 3</span>
+              <span class="form-field">Seminários: 1</span>
+              <span class="form-field">Participantes: 89</span>
+              <em style="font-size:.72rem;color:#94a3b8">→ total=4</em>
+            </div>
+          </div>
+          <div class="example">
+            <div class="ex-name">🗣️ Reuniões de Articulação</div>
+            <div class="ex-config">desag_reunioes=✓  desag_encontros=✓</div>
+            <div class="ex-form">
+              <span class="form-field">Reuniões: 6</span>
+              <span class="form-field">Encontros: 2</span>
+              <em style="font-size:.72rem;color:#94a3b8">→ total=8</em>
+            </div>
+          </div>
+        </div>
+        <div class="sum-map">
+          <div class="sum-map-inner">
+            <span class="key">'eventos'</span>: (<span class="model">Evento</span>, <span class="field">'total'</span>)
+          </div>
+        </div>
+      </div>
+
+      <!-- PLANOS -->
+      <div class="type-card" data-tipo="planos">
+        <div class="type-card-header">
+          <div class="left">
+            <div class="type-name">Planos</div>
+            <div class="type-key">tipo='planos'</div>
+          </div>
+          <div class="model-badge">→ Planos</div>
+        </div>
+        <div class="desag-section">
+          <div class="desag-label">Progressão por score — 5 níveis</div>
+          <div class="score-bar">
+            <div class="score-step active"></div>
+            <div class="score-step active"></div>
+            <div class="score-step active"></div>
+            <div class="score-step active"></div>
+            <div class="score-step active"></div>
+          </div>
+          <div class="score-labels">
+            <span>Em desenv. (1)</span>
+            <span>Proposto (2)</span>
+            <span>Adotado (3)</span>
+            <span>Em impl. (4)</span>
+            <span>Implementado (5)</span>
+          </div>
+          <div class="desag-chips" style="margin-top:.6rem">
+            <span class="chip chip-required">Catálogo Plano (dropdown)</span>
+            <span class="chip chip-required">situacao_nova</span>
+          </div>
+          <div class="desag-chips" style="margin-top:.3rem">
+            <span class="chip chip-optional">TIs / UCs / PAs / TUCs no Plano</span>
+          </div>
+        </div>
+        <div class="examples-section">
+          <div class="examples-label">Exemplos</div>
+          <div class="example">
+            <div class="ex-name">📋 PGTA da TI Araribá — Progressão</div>
+            <div class="ex-config">Meta: base=1  meta=5</div>
+            <div class="ex-form">
+              <span class="form-select">Plano: PGTA Araribá ▾</span>
+              <span class="form-select">Situação: Adotado ▾</span>
+              <em style="font-size:.72rem;color:#94a3b8">→ realizado = 3</em>
+            </div>
+          </div>
+        </div>
+        <div class="note">Sem desag_* — lógica própria de score no Meta.realizado</div>
+      </div>
+
+      <!-- PARCERIAS -->
+      <div class="type-card" data-tipo="parcerias">
+        <div class="type-card-header">
+          <div class="left">
+            <div class="type-name">Parcerias</div>
+            <div class="type-key">tipo='parcerias'</div>
+          </div>
+          <div class="model-badge">→ Parcerias</div>
+        </div>
+        <div class="desag-section">
+          <div class="desag-label">M2M catálogo + contagem por tipo</div>
+          <div class="desag-chips">
+            <span class="chip chip-required">M2M → Parceria (catálogo)</span>
+            <span class="chip chip-required">total_parcerias (auto)</span>
+            <span class="chip chip-optional">contagem por Parceria.tipo</span>
+          </div>
+        </div>
+        <div class="examples-section">
+          <div class="examples-label">Exemplo</div>
+          <div class="example">
+            <div class="ex-name">🤝 Parcerias Institucionais Estabelecidas</div>
+            <div class="ex-form">
+              <span class="form-select">Selecionar Parcerias ▾</span>
+              <em style="font-size:.72rem;color:#94a3b8">→ total=4 (2 gov. + 2 OSC)</em>
+            </div>
+          </div>
+        </div>
+        <div class="sum-map">
+          <div class="sum-map-inner">
+            <span class="key">'parcerias'</span>: (<span class="model">Parcerias</span>, <span class="field">'total_parcerias'</span>)
+          </div>
+        </div>
+        <div class="note">Parceria.tipo precisa de TIPO_CHOICES padronizados (pendente)</div>
+      </div>
+
+      <!-- LEIS E POLÍTICAS -->
+      <div class="type-card" data-tipo="leis_politicas">
+        <div class="type-card-header">
+          <div class="left">
+            <div class="type-name">Leis e Políticas</div>
+            <div class="type-key">tipo='leis_politicas'</div>
+          </div>
+          <div class="model-badge">→ Leis</div>
+        </div>
+        <div class="desag-section">
+          <div class="desag-label">M2M catálogo + situação + histórico</div>
+          <div class="desag-chips">
+            <span class="chip chip-required">M2M → Lei (catálogo)</span>
+            <span class="chip chip-required">total_leis (auto)</span>
+            <span class="chip chip-required">total por situação (auto)</span>
+          </div>
+          <div class="desag-chips" style="margin-top:.3rem">
+            <span class="chip chip-optional">em desenvolvimento</span>
+            <span class="chip chip-optional">proposta</span>
+            <span class="chip chip-optional">aprovada</span>
+            <span class="chip chip-optional">implementada</span>
+          </div>
+        </div>
+        <div class="examples-section">
+          <div class="examples-label">Exemplo</div>
+          <div class="example">
+            <div class="ex-name">📜 Políticas Indígenas Fortalecidas</div>
+            <div class="ex-form">
+              <span class="form-select">Selecionar Leis ▾</span>
+            </div>
+            <div class="ex-form" style="margin-top:.3rem">
+              <em style="font-size:.72rem;color:#94a3b8">→ total=3 (1 proposta + 2 aprovadas)</em>
+            </div>
+          </div>
+        </div>
+        <div class="sum-map">
+          <div class="sum-map-inner">
+            <span class="key">'leis_politicas'</span>: (<span class="model">Leis</span>, <span class="field">'total_leis'</span>)
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div><!-- /cat-processos -->
+
+  <!-- ══════════════════════════════════════════════════════════════
+       CATEGORIA: FINANCEIRO / PRODUTOS
+  ══════════════════════════════════════════════════════════════ -->
+  <div class="cat-financeiro cat-section" data-cat="financeiro">
+    <div class="cat-header">
+      <div class="cat-icon">💰</div>
+      <h2>Financeiro e Produtos</h2>
+    </div>
+    <div class="type-grid">
+
+      <!-- MOBILIZADOS -->
+      <div class="type-card" data-tipo="mobilizados">
+        <div class="type-card-header">
+          <div class="left">
+            <div class="type-name">Recursos Mobilizados</div>
+            <div class="type-key">tipo='mobilizados'</div>
+          </div>
+          <div class="model-badge">→ Mobilizados</div>
+        </div>
+        <div class="desag-section">
+          <div class="desag-label">Valor + tipo de apoio + fonte</div>
+          <div class="desag-chips">
+            <span class="chip chip-required">valor_mobilizado (R$)</span>
+            <span class="chip chip-required">tipo_apoio</span>
+            <span class="chip chip-required">fonte_apoio</span>
+          </div>
+        </div>
+        <div class="examples-section">
+          <div class="examples-label">Exemplo</div>
+          <div class="example">
+            <div class="ex-name">💵 Recursos Contrapartida Mobilizados</div>
+            <div class="ex-form">
+              <span class="form-field">Valor: R$ 45.000</span>
+              <span class="form-select">Tipo: Dinheiro ▾</span>
+              <span class="form-select">Fonte: Empresa ▾</span>
+            </div>
+          </div>
+        </div>
+        <div class="sum-map">
+          <div class="sum-map-inner">
+            <span class="key">'mobilizados'</span>: (<span class="model">Mobilizados</span>, <span class="field">'valor_mobilizado'</span>)
+          </div>
+        </div>
+      </div>
+
+      <!-- CONTRATOS -->
+      <div class="type-card" data-tipo="contratos">
+        <div class="type-card-header">
+          <div class="left">
+            <div class="type-name">Contratos</div>
+            <div class="type-key">tipo='contratos'</div>
+          </div>
+          <div class="model-badge">→ Contratos</div>
+        </div>
+        <div class="desag-section">
+          <div class="desag-label">M2M catálogo + valor total</div>
+          <div class="desag-chips">
+            <span class="chip chip-required">M2M → Contrato (catálogo)</span>
+            <span class="chip chip-required">valor_total</span>
+          </div>
+        </div>
+        <div class="examples-section">
+          <div class="examples-label">Exemplo</div>
+          <div class="example">
+            <div class="ex-name">📝 Contratos de Serviço Assinados</div>
+            <div class="ex-form">
+              <span class="form-select">Selecionar Contratos ▾</span>
+              <span class="form-field">Valor total: R$ 120.000</span>
+            </div>
+          </div>
+        </div>
+        <div class="sum-map">
+          <div class="sum-map-inner">
+            COUNT_MAP → <span class="model">Contratos</span> (conta registros)
+          </div>
+        </div>
+        <div class="note">Catálogo Contrato ganha campo valor para compor valor_total</div>
+      </div>
+
+      <!-- PRODUTOS -->
+      <div class="type-card" data-tipo="produtos">
+        <div class="type-card-header">
+          <div class="left">
+            <div class="type-name">Produtos</div>
+            <div class="type-key">tipo='produtos'</div>
+          </div>
+          <div class="model-badge">→ Produtos</div>
+        </div>
+        <div class="desag-section">
+          <div class="desag-label">M2M catálogo (com tipo) + contagem</div>
+          <div class="desag-chips">
+            <span class="chip chip-required">M2M → Produto (catálogo com tipo)</span>
+            <span class="chip chip-required">total_produtos (auto)</span>
+            <span class="chip chip-optional">contagem por Produto.tipo</span>
+          </div>
+        </div>
+        <div class="examples-section">
+          <div class="examples-label">Exemplo</div>
+          <div class="example">
+            <div class="ex-name">📦 Produtos de Comunicação Gerados</div>
+            <div class="ex-form">
+              <span class="form-select">Selecionar Produtos ▾</span>
+              <em style="font-size:.72rem;color:#94a3b8">→ total=5 (3 vídeos + 2 publicações)</em>
+            </div>
+          </div>
+        </div>
+        <div class="sum-map">
+          <div class="sum-map-inner">
+            <span class="key">'produtos'</span>: (<span class="model">Produtos</span>, <span class="field">'total_produtos'</span>)
+          </div>
+        </div>
+        <div class="note">Catálogo Produto ganha campo tipo com PRODUTO_TIPO_CHOICES (pendente)</div>
+      </div>
+
+      <!-- FUNDOS -->
+      <div class="type-card" data-tipo="fundos">
+        <div class="type-card-header">
+          <div class="left">
+            <div class="type-name">Fundos</div>
+            <div class="type-key">tipo='fundos'</div>
+          </div>
+          <div class="model-badge">→ Fundo</div>
+        </div>
+        <div class="desag-section">
+          <div class="desag-label">Contagem + valor + tipo</div>
+          <div class="desag-chips">
+            <span class="chip chip-required">quantidade</span>
+            <span class="chip chip-required">valor_total</span>
+            <span class="chip chip-required">tipo (público/privado/internacional/misto)</span>
+          </div>
+        </div>
+        <div class="examples-section">
+          <div class="examples-label">Exemplo</div>
+          <div class="example">
+            <div class="ex-name">🌐 Fundos Captados para Conservação</div>
+            <div class="ex-form">
+              <span class="form-field">Quantidade: 2</span>
+              <span class="form-field">Valor: R$ 500.000</span>
+              <span class="form-select">Tipo: Internacional ▾</span>
+            </div>
+          </div>
+        </div>
+        <div class="sum-map">
+          <div class="sum-map-inner">
+            <span class="key">'fundos'</span>: (<span class="model">Fundo</span>, <span class="field">'quantidade'</span>)
+          </div>
+        </div>
+      </div>
+
+      <!-- PEQUENOS PROJETOS -->
+      <div class="type-card" data-tipo="pequenos_projetos">
+        <div class="type-card-header">
+          <div class="left">
+            <div class="type-name">Pequenos Projetos</div>
+            <div class="type-key">tipo='pequenos_projetos'</div>
+          </div>
+          <div class="model-badge">→ PequenoProjeto</div>
+        </div>
+        <div class="desag-section">
+          <div class="desag-label">Contagem + classificação + valor</div>
+          <div class="desag-chips">
+            <span class="chip chip-required">quantidade</span>
+            <span class="chip chip-required">tipo</span>
+            <span class="chip chip-required">tema</span>
+            <span class="chip chip-required">valor_total</span>
+          </div>
+        </div>
+        <div class="examples-section">
+          <div class="examples-label">Exemplo</div>
+          <div class="example">
+            <div class="ex-name">🪴 Pequenos Projetos Agroecológicos Apoiados</div>
+            <div class="ex-form">
+              <span class="form-field">Qtd: 7</span>
+              <span class="form-field">Tipo: Produtivo</span>
+              <span class="form-field">Tema: Agroecologia</span>
+              <span class="form-field">Valor: R$ 35.000</span>
+            </div>
+          </div>
+        </div>
+        <div class="sum-map">
+          <div class="sum-map-inner">
+            <span class="key">'pequenos_projetos'</span>: (<span class="model">PequenoProjeto</span>, <span class="field">'quantidade'</span>)
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div><!-- /cat-financeiro -->
+
+  <!-- ══════════════════════════════════════════════════════════════
+       CATEGORIA: ARTICULAÇÃO
+  ══════════════════════════════════════════════════════════════ -->
+  <div class="cat-articulacao cat-section" data-cat="articulacao">
+    <div class="cat-header">
+      <div class="cat-icon">🕸️</div>
+      <h2>Articulação</h2>
+    </div>
+    <div class="type-grid">
+
+      <!-- REDES -->
+      <div class="type-card" data-tipo="redes">
+        <div class="type-card-header">
+          <div class="left">
+            <div class="type-name">Redes</div>
+            <div class="type-key">tipo='redes'</div>
+          </div>
+          <div class="model-badge">→ Rede</div>
+        </div>
+        <div class="desag-section">
+          <div class="desag-label">Nome + tipo + quantidade</div>
+          <div class="desag-chips">
+            <span class="chip chip-required">nome / referência</span>
+            <span class="chip chip-required">tipo (local/regional/nacional/internacional)</span>
+            <span class="chip chip-required">quantidade</span>
+          </div>
+        </div>
+        <div class="examples-section">
+          <div class="examples-label">Exemplos</div>
+          <div class="example">
+            <div class="ex-name">🔗 Redes de Governança Fortalecidas</div>
+            <div class="ex-form">
+              <span class="form-field">Nome: Rede Xingu</span>
+              <span class="form-select">Tipo: Regional ▾</span>
+              <span class="form-field">Qtd: 1</span>
+            </div>
+          </div>
+          <div class="example">
+            <div class="ex-name">🌐 Redes Nacionais Articuladas</div>
+            <div class="ex-config">(múltiplos registros Rede por atividade, um por rede)</div>
+          </div>
+        </div>
+        <div class="sum-map">
+          <div class="sum-map-inner">
+            <span class="key">'redes'</span>: (<span class="model">Rede</span>, <span class="field">'quantidade'</span>)
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div><!-- /cat-articulacao -->
+
+  <!-- ══════════════════════════════════════════════════════════════
+       CATEGORIA: LIVRE
+  ══════════════════════════════════════════════════════════════ -->
+  <div class="cat-livre cat-section" data-cat="livre">
+    <div class="cat-header">
+      <div class="cat-icon">📝</div>
+      <h2>Livre</h2>
+    </div>
+    <div class="type-grid">
+
+      <!-- OUTRO -->
+      <div class="type-card" data-tipo="outro">
+        <div class="type-card-header">
+          <div class="left">
+            <div class="type-name">Outro</div>
+            <div class="type-key">tipo='outro'</div>
+          </div>
+          <div class="model-badge">→ Outro</div>
+        </div>
+        <div class="desag-section">
+          <div class="desag-label">Livre: descrição + valor</div>
+          <div class="desag-chips">
+            <span class="chip chip-required">descricao (texto)</span>
+            <span class="chip chip-required">valor (número)</span>
+          </div>
+        </div>
+        <div class="examples-section">
+          <div class="examples-label">Exemplo</div>
+          <div class="example">
+            <div class="ex-name">📊 Indicador Customizado Transitório</div>
+            <div class="ex-form">
+              <span class="form-field">Descrição: Visitas técnicas...</span>
+              <span class="form-field">Valor: 12</span>
+            </div>
+          </div>
+        </div>
+        <div class="sum-map">
+          <div class="sum-map-inner">
+            <span class="key">'outro'</span>: (<span class="model">Outro</span>, <span class="field">'valor'</span>)
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div><!-- /cat-livre -->
+
+  <!-- FOCO CHOICES -->
+  <div style="background:white;border-radius:14px;padding:1.5rem;margin-top:2rem;border:1px solid #e2e8f0;">
+    <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#94a3b8;margin-bottom:1rem">FOCO_CHOICES — compartilhado entre Pessoas e Organizações (quando tem_foco=True)</div>
+    <div style="display:flex;flex-wrap:wrap;gap:.5rem">
+      <div style="background:#dcfce7;border:1px solid #86efac;border-radius:8px;padding:.5rem 1rem;font-size:.85rem;font-weight:600;color:#15803d">🌱 Sociobiodiversidade</div>
+      <div style="background:#dbeafe;border:1px solid #93c5fd;border-radius:8px;padding:.5rem 1rem;font-size:.85rem;font-weight:600;color:#1d4ed8">🏛️ Governança Territorial e Ambiental</div>
+      <div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;padding:.5rem 1rem;font-size:.85rem;font-weight:600;color:#92400e">✊ Defesa de Direitos</div>
+      <div style="background:#f3e8ff;border:1px solid #d8b4fe;border-radius:8px;padding:.5rem 1rem;font-size:.85rem;font-weight:600;color:#6b21a8">🤝 Fortalecimento da Sociedade Civil</div>
+    </div>
+  </div>
+
+  <div style="height:3rem"></div>
+</div><!-- /categories -->
+
+<script>
+(function () {
+  const pills   = document.querySelectorAll('.tipo-pill[data-filter]');
+  const cards   = document.querySelectorAll('.type-card[data-tipo]');
+  const sections = document.querySelectorAll('.cat-section[data-cat]');
+  const status  = document.getElementById('filter-status');
+
+  // Label map for status line
+  const labels = {
+    pessoas: 'Pessoas', organizacoes: 'Organizações', area: 'Área',
+    areas_protegidas: 'Áreas Protegidas', eventos: 'Eventos', planos: 'Planos',
+    parcerias: 'Parcerias', leis_politicas: 'Leis e Políticas',
+    mobilizados: 'Mobilizados', contratos: 'Contratos', produtos: 'Produtos',
+    fundos: 'Fundos', pequenos_projetos: 'Pequenos Projetos',
+    redes: 'Redes', outro: 'Outro',
+  };
+
+  let active = null;
+
+  function applyFilter(tipo) {
+    active = tipo;
+
+    // Pills
+    pills.forEach(p => {
+      const f = p.dataset.filter;
+      if (f === 'todos') return;
+      p.classList.toggle('is-active', f === tipo);
+      p.classList.toggle('is-dimmed', tipo !== null && f !== tipo);
+    });
+
+    // Cards + sections
+    sections.forEach(sec => {
+      const cardsInSec = sec.querySelectorAll('.type-card[data-tipo]');
+      let anyVisible = false;
+      cardsInSec.forEach(card => {
+        const match = tipo === null || card.dataset.tipo === tipo;
+        card.classList.toggle('is-hidden', !match);
+        if (match) anyVisible = true;
+      });
+      sec.classList.toggle('is-hidden', !anyVisible);
+    });
+
+    // Status
+    if (tipo === null) {
+      status.innerHTML = '';
+    } else {
+      status.innerHTML = `Mostrando tipo: <strong>${labels[tipo] || tipo}</strong> &nbsp;·&nbsp; <a href="#" id="clear-filter" style="color:#3b82f6;text-decoration:none;font-size:.8rem">← ver todos</a>`;
+      document.getElementById('clear-filter').addEventListener('click', e => {
+        e.preventDefault();
+        applyFilter(null);
+      });
+    }
+
+    // Scroll to cards section if filtering
+    if (tipo !== null) {
+      document.querySelector('.categories').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  pills.forEach(pill => {
+    pill.addEventListener('click', () => {
+      const f = pill.dataset.filter;
+      if (f === 'todos') {
+        applyFilter(null);
+      } else if (active === f) {
+        // Second click on same pill → reset
+        applyFilter(null);
+      } else {
+        applyFilter(f);
+      }
+    });
+  });
+})();
+</script>
+
+</body>
+</html>
