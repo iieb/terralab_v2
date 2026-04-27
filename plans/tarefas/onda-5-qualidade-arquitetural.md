@@ -233,7 +233,7 @@ from .formacao import *
 
 3. **Verificar todos os imports externos**: `views.py`, `admin.py`, `signals.py`, `tests.py`, etc. devem continuar funcionando com `from ieb.models import X`.
 
-4. **Constantes transversais**: mover para um modulo estavel e sem dependencia circular, preferencialmente `models/choices.py`, e importar nos modulos que precisarem. Constantes conhecidas no codigo atual:
+4. **Constantes transversais**: mover para um modulo estavel e sem dependencia circular: `src/ieb/constants.py`. Este arquivo fica fora do pacote `models/` para poder ser importado por models, views, admin, signals e scripts auxiliares sem criar ciclos. Constantes conhecidas no codigo atual:
    - `INDICADOR_TIPO_CHOICES`
    - `SCORE_PLANO`
    - `FOCO_CHOICES`
@@ -243,7 +243,7 @@ from .formacao import *
    - `PRODUTO_TIPO_CHOICES`
 
 ```python
-# src/ieb/models/choices.py
+# src/ieb/constants.py
 INDICADOR_TIPO_CHOICES = (...)
 SCORE_PLANO = {...}
 FOCO_CHOICES = (...)
@@ -251,6 +251,12 @@ REDE_TIPO_CHOICES = (...)
 FUNDO_TIPO_CHOICES = (...)
 PARCERIA_TIPO_CHOICES = (...)
 PRODUTO_TIPO_CHOICES = (...)
+```
+
+Importar explicitamente nos modulos que precisarem:
+
+```python
+from ieb.constants import INDICADOR_TIPO_CHOICES, SCORE_PLANO
 ```
 
 5. **FKs entre modulos**: preferir referencias por string (`'Indicador'`, `'AtividadeRegistro'`) quando isso reduzir import circular. Quando importar classes, importar do modulo especifico, nao de `__init__`:

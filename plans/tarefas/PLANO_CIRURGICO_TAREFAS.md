@@ -3,6 +3,55 @@
 > **Origem:** `plans/2026-04-22-plano-cirurgico-priorizado-src-ieb-models-1.3.md`
 > **Data:** 2026-04-27 | **Total:** 29 tarefas | **Migrations:** ~27
 > **Revisao tecnica:** 2026-04-27 — correcoes C1-C5, A1-A7, M1-M4 aplicadas nos arquivos de ondas.
+> **Ambiente local:** Docker/GeoNode validado em 2026-04-27 antes do inicio das subtasks.
+
+---
+
+## Registro de preparacao do ambiente local
+
+Antes de iniciar qualquer subtask, o ambiente Docker local foi preparado e validado no estado atual do codigo.
+
+| Item | Resultado |
+|------|-----------|
+| Arquivo `.env` | Gerado com `create-envfile.py` em modo `dev`, hostname `localhost` |
+| Docker Compose | Configuracao validada com sucesso apos gerar `.env` |
+| GeoNode/Nginx | `http://localhost/` respondeu HTTP 200 |
+| GeoServer via proxy | `http://localhost/geoserver/` respondeu HTTP 302 para `/geoserver/index.html` |
+| GeoServer direto | `http://localhost:8080/geoserver/` respondeu HTTP 302 |
+| Rota customizada IEB | `http://localhost/ieb/atividade_registro/v2/` respondeu HTTP 200 |
+| Django check | `python manage.py check` executado no container sem issues |
+
+Observacoes operacionais:
+
+- O terminal pode aparentar travar durante `docker compose up -d --build`, pois o build/startup do GeoNode e demorado.
+- Se `geoserver` ou `celery` ficarem em estado `Created`, iniciar explicitamente com `docker compose up -d geoserver celery`.
+- Se o proxy `/geoserver/` retornar 502 apos o GeoServer subir, reiniciar o Nginx com `docker compose restart geonode` para renovar a resolucao DNS interna.
+- `letsencrypt` pode ficar reiniciando com `LETSENCRYPT_MODE=disabled`; isso e ruido esperado no ambiente HTTP local e nao bloqueia os testes.
+
+---
+
+## Registro das correcoes da revisao tecnica
+
+As correcoes abaixo foram incorporadas nos arquivos executaveis das ondas em `plans/tarefas/`. Este registro serve como checklist obrigatorio antes de implementar codigo.
+
+| ID | Severidade | Arquivo de tarefa | Decisao documentada |
+|----|------------|-------------------|---------------------|
+| C1 | Critica | `onda-1-correcoes-pontuais.md` | Onde o model nao tem `class Meta`, a tarefa manda **CRIAR** `class Meta`; `Mobilizados` preserva a `Meta` existente. |
+| C2 | Critica | `onda-2-constraints-satelites.md` | T-2.2 separa Grupo A com `unique_together` existente e Grupo B sem `unique_together`; nao remover constraint inexistente. |
+| C3 | Critica | `onda-3-sinais-m2m.md` | Em `Area` e `AreasProtegidas`, manter o primeiro `super().save()` para obter PK; mover apenas calculos para signals. |
+| C4 | Critica | `onda-4-coerencia-dominio.md` | `Planos.save()` deve aceitar `usuario=None`; views passam `request.user`; sem usuario, gravar `None`. |
+| C5 | Critica | `onda-5-qualidade-arquitetural.md` | Constantes transversais devem ir para `src/ieb/constants.py` para reduzir dependencia circular. |
+| A1 | Alta | `onda-1-correcoes-pontuais.md` | Corrigida justificativa de `Evento.total`: problema e filtro falsy (`None` e `0`), nao soma de zeros em si. |
+| A2 | Alta | `onda-1-correcoes-pontuais.md` | `Contratos.save()` deve usar `aggregate(... )['total'] or 0`. |
+| A3 | Alta | `onda-2-constraints-satelites.md` | `DESAG_FIELDS` e lista; adicionar string `desag_org_governo`, alem de POST, config e admin. |
+| A4 | Alta | `onda-4-coerencia-dominio.md` | Roll-up em `Meta.realizado` deve ser cirurgico; nao reescrever metodo inteiro. |
+| A5 | Alta | `onda-4-coerencia-dominio.md` | `LeiHistorico.usuario` e `PlanoHistorico.usuario` usam `max_length=255` no estado atual; migration deve refletir campo real. |
+| A6 | Alta | `onda-4-coerencia-dominio.md` | `Outro` nao esta registrado no admin; nenhuma remocao de admin e necessaria. |
+| A7 | Alta | `bonus-planos-financiador.md` | Usar roteamento existente com marcador `is_fin`; evitar mapa paralelo desnecessario. |
+| M1 | Media | `onda-2-constraints-satelites.md` | Testar explicitamente `Pessoas(total_pessoas=0, homens=None).save()` como caso OK em Postgres. |
+| M2 | Media | `onda-5-qualidade-arquitetural.md` | Depois de `DecimalField`, usar `Decimal('0')` em agregacoes de area; nao usar `0.0`. |
+| M3 | Media | `onda-5-qualidade-arquitetural.md` | Thumbnail via Celery deve usar `transaction.on_commit(...)`. |
+| M4 | Media | `final-documentacao.md` | `FOCO_CHOICES` documentado com valores reais: `governanca`, `implementacao`, `ativ_prod`. |
 
 ---
 
