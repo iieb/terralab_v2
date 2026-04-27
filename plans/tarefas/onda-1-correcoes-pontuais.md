@@ -415,3 +415,39 @@ Mobilizados(valor_mobilizado=100, ...).save()  # OK
 
 ### Dependencias
 Nenhuma.
+
+---
+
+## Resultado da execucao — 2026-04-27
+
+### Status
+Concluida.
+
+### Arquivos alterados
+- `src/ieb/models.py`
+- `src/ieb/migrations/0033_alter_contratos_valor_total_and_more.py`
+
+### Tarefas executadas
+- T-1.1: `Evento.save()` passou a somar campos com `(v or 0)`.
+- T-1.2: `Contratos.valor_total` recebeu `default=0` e o aggregate do `save()` passou a usar fallback `or 0`.
+- T-1.3: adicionada constraint `data_final_gte_data_inicio` em `AtividadeRegistro`.
+- T-1.4: adicionadas constraints `meta_data_gte_data_inicio` e `metafinanciador_data_gte_data_inicio`.
+- T-1.5: adicionado `unique_together` em `OIRegLoc`.
+- T-1.6: adicionado `unique_together` em `TIsIGATI`.
+- T-1.7: adicionados `unique_together` em `EquipeProjeto`, `ProjetoOI` e `ProjetoTI`.
+- T-1.8: adicionados `unique_together` contextuais em `Componente` e `Atividade`.
+- T-1.9: adicionado `unique_together` em `Subatividade`.
+- T-1.11: adicionada constraint `valor_mobilizado_positive` em `Mobilizados`, preservando `unique_together` existente.
+
+### Validacoes executadas
+- Verificacao previa de duplicidades e violacoes de constraints no banco local: zero ocorrencias bloqueantes.
+- `python manage.py makemigrations ieb`: gerou a migration `0033_alter_contratos_valor_total_and_more.py`.
+- `python manage.py migrate ieb`: aplicou a migration com sucesso.
+- `python manage.py check`: sem issues.
+- `python manage.py makemigrations ieb --check --dry-run`: sem mudancas pendentes no app `ieb`.
+- `curl -I http://localhost/ieb/atividade_registro/v2/`: HTTP 200.
+
+### Observacoes
+- A checagem global `makemigrations --check --dry-run` apontou mudanca pendente no app externo `upload` do GeoNode instalado em `/usr/local/lib/python3.10/dist-packages/geonode/upload`; isso nao pertence ao app `ieb` nem foi alterado nesta onda.
+- Os avisos sobre suporte futuro ao Python 3.10 vieram de `google.api_core` e nao bloquearam as validacoes.
+

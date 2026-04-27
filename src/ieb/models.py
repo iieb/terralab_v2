@@ -37,6 +37,9 @@ class OIRegLoc(models.Model):
     oiregional = models.ForeignKey(OIsRegional, on_delete=models.CASCADE)
     oilocal = models.ForeignKey(OIsLocal, on_delete=models.CASCADE)
 
+    class Meta:
+        unique_together = ('oiregional', 'oilocal')
+
     def __str__(self):
         return f"{self.oiregional.ois_reg} - {self.oilocal.nome}"
 
@@ -90,6 +93,9 @@ class IGATI(models.Model):
 class TIsIGATI(models.Model):
     igati = models.ForeignKey(IGATI, on_delete=models.CASCADE)
     tis = models.ForeignKey(TIs, on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = ('igati', 'tis')
 
     def __str__(self):
         return f"{self.igati.nome} - {self.tis.nome}"
@@ -172,6 +178,9 @@ class Componente(models.Model):
     projeto = models.ForeignKey(Projeto, on_delete=models.CASCADE)
     instituicao = models.ForeignKey(Instituicao, on_delete=models.CASCADE)
 
+    class Meta:
+        unique_together = ('projeto', 'codigo')
+
     def __str__(self):
         return f"Componente {self.codigo}: {self.nome}"
 
@@ -182,6 +191,9 @@ class Atividade(models.Model):
     descricao = models.CharField(max_length=255)
     componente = models.ForeignKey(Componente, on_delete=models.CASCADE)
 
+    class Meta:
+        unique_together = ('componente', 'codigo')
+
     def __str__(self):
         return f"Atividade {self.codigo}: {self.nome}"
 
@@ -189,6 +201,9 @@ class Atividade(models.Model):
 class EquipeProjeto(models.Model):
     equipe = models.ForeignKey(Equipe, on_delete=models.CASCADE)
     projeto = models.ForeignKey(Projeto, on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = ('equipe', 'projeto')
 
     def __str__(self):
         return f"{self.equipe.nome} - {self.equipe.instituicao}"
@@ -198,6 +213,9 @@ class ProjetoOI(models.Model):
     oilocal = models.ForeignKey(OIsLocal, on_delete=models.CASCADE)
     projeto = models.ForeignKey(Projeto, on_delete=models.CASCADE)
 
+    class Meta:
+        unique_together = ('oilocal', 'projeto')
+
     def __str__(self):
         return f"{self.oilocal.nome} - {self.projeto.nome}"
 
@@ -205,6 +223,9 @@ class ProjetoOI(models.Model):
 class ProjetoTI(models.Model):
     tis = models.ForeignKey(TIs, on_delete=models.CASCADE)
     projeto = models.ForeignKey(Projeto, on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = ('tis', 'projeto')
 
     def __str__(self):
         return f"{self.tis.nome} - {self.projeto.nome}"
@@ -255,6 +276,9 @@ class Subatividade(models.Model):
     codigo = models.CharField(max_length=255)
     descricao = models.CharField(max_length=255)
     atividade = models.ForeignKey(Atividade, on_delete=models.CASCADE, related_name='subatividades')
+
+    class Meta:
+        unique_together = ('atividade', 'codigo')
 
     def __str__(self):
         return f"Subatividade {self.codigo}: {self.nome}"
@@ -503,6 +527,14 @@ class Meta(models.Model):
     def percentual(self):
         return round((self.realizado / self.meta) * 100, 1) if self.meta else 0
 
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(data_inicio__isnull=True) | models.Q(data__gte=models.F('data_inicio')),
+                name='%(class)s_data_gte_data_inicio',
+            ),
+        ]
+
 
 class MetaFinanciador(models.Model):
     atividade             = models.ForeignKey(Atividade, on_delete=models.CASCADE, related_name='metas_financiador')
@@ -566,6 +598,14 @@ class MetaFinanciador(models.Model):
     def percentual(self):
         return round((self.realizado / self.meta) * 100, 1) if self.meta else 0
 
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(data_inicio__isnull=True) | models.Q(data__gte=models.F('data_inicio')),
+                name='%(class)s_data_gte_data_inicio',
+            ),
+        ]
+
 
 class AtividadeRegistro(models.Model):
     projeto = models.ForeignKey(Projeto, on_delete=models.CASCADE)
@@ -585,6 +625,13 @@ class AtividadeRegistro(models.Model):
     comentarios = models.TextField(blank=True)
     email_organizacao = models.EmailField(max_length=255, blank=True, null=True)
 
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(data_final__gte=models.F('data_inicio')),
+                name='data_final_gte_data_inicio',
+            ),
+        ]
 
     def __str__(self):
         return f"{self.data_inicio} - {self.projeto.nome}/COMP-{self.componente.codigo}/ATIV-{self.atividade.codigo} - {self.atividade.nome}"
@@ -850,7 +897,7 @@ class Evento(models.Model):
         unique_together = ('atividade_registro', 'indicador')
 
     def save(self, *args, **kwargs):
-        self.total = sum(v for v in [self.formacoes, self.seminarios, self.encontros, self.reunioes] if v)
+        self.total = sum((v or 0) for v in [self.formacoes, self.seminarios, self.encontros, self.reunioes])
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -1083,6 +1130,12 @@ class Mobilizados(models.Model):
         verbose_name = 'Mobilizado'
         verbose_name_plural = 'Mobilizados'
         unique_together = ('atividade_registro', 'indicador')
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(valor_mobilizado__gt=0),
+                name='valor_mobilizado_positive',
+            ),
+        ]
 
     def __str__(self):
         return f"Mobilizado - Valor: {self.valor_mobilizado}"
@@ -1163,7 +1216,7 @@ class Contratos(models.Model):
     indicador             = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     contratos   = models.ManyToManyField(Contrato, related_name='contratos_registro')
-    valor_total = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, editable=False)
+    valor_total = models.DecimalField(max_digits=15, decimal_places=2, default=0, editable=False)
 
     class Meta:
         unique_together = ('atividade_registro', 'indicador')
@@ -1171,7 +1224,7 @@ class Contratos(models.Model):
     def save(self, *args, **kwargs):
         if self.pk is None:
             super().save(*args, **kwargs)
-        self.valor_total = self.contratos.aggregate(total=models.Sum('valor'))['total']
+        self.valor_total = self.contratos.aggregate(total=models.Sum('valor'))['total'] or 0
         super().save(*args, **kwargs)
 
     def __str__(self):
