@@ -1,4 +1,5 @@
 from django.db import models
+from django.core.exceptions import ValidationError
 
 # Create your models here.
 from django.utils import timezone
@@ -389,6 +390,7 @@ class Indicador(models.Model):
     desag_org_sc            = models.BooleanField(default=False, verbose_name='Sociedade Civil')
     desag_org_indigenas     = models.BooleanField(default=False, verbose_name='Org. Indígenas')
     desag_org_extrativistas = models.BooleanField(default=False, verbose_name='Org. Extrativistas')
+    desag_org_governo       = models.BooleanField(default=False, verbose_name='Governo')
 
     # Desagregações — Área (modos)
     desag_restrito = models.BooleanField(default=False, verbose_name='Área Restrita (HA manual)')
@@ -439,6 +441,7 @@ class IndicadorFinanciador(models.Model):
     desag_org_sc            = models.BooleanField(default=False, verbose_name='Sociedade Civil')
     desag_org_indigenas     = models.BooleanField(default=False, verbose_name='Org. Indígenas')
     desag_org_extrativistas = models.BooleanField(default=False, verbose_name='Org. Extrativistas')
+    desag_org_governo       = models.BooleanField(default=False, verbose_name='Governo')
 
     # Desagregações — Área (modos)
     desag_restrito = models.BooleanField(default=False, verbose_name='Área Restrita (HA manual)')
@@ -709,11 +712,33 @@ class TUC(models.Model):
         return self.nome
 
 
+def _satellite_constraints(model_name):
+    return [
+        models.CheckConstraint(
+            check=~models.Q(
+                indicador__isnull=False,
+                indicador_financiador__isnull=False,
+            ),
+            name=f'{model_name}_single_fk',
+        ),
+        models.UniqueConstraint(
+            fields=['atividade_registro', 'indicador'],
+            condition=models.Q(indicador__isnull=False),
+            name=f'{model_name}_unique_indicador',
+        ),
+        models.UniqueConstraint(
+            fields=['atividade_registro', 'indicador_financiador'],
+            condition=models.Q(indicador_financiador__isnull=False),
+            name=f'{model_name}_unique_ind_fin',
+        ),
+    ]
+
+
 # ÁREA (unifica AreaRestrito + AreaDireto + AreaGeral)
 class Area(models.Model):
     atividade_registro    = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE)
-    indicador             = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
-    indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    indicador             = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(class)s_set')
+    indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(class)s_fin_set')
     # Modo restrito — HA manual
     ha_restrito = models.FloatField(null=True, blank=True)
     # Modos direto/indireto — seleção M2M + soma automática
@@ -724,7 +749,7 @@ class Area(models.Model):
     total_ha = models.FloatField(default=0.0, editable=False)
 
     class Meta:
-        unique_together = ('atividade_registro', 'indicador')
+        constraints = _satellite_constraints('area')
 
     def save(self, *args, **kwargs):
         if not self.pk:
@@ -745,8 +770,8 @@ class Area(models.Model):
 # ÁREAS PROTEGIDAS (conta unidades por tipo)
 class AreasProtegidas(models.Model):
     atividade_registro    = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE)
-    indicador             = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
-    indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    indicador             = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(class)s_set')
+    indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(class)s_fin_set')
     tis  = models.ManyToManyField(TIs,  blank=True, related_name='areas_protegidas')
     ucs  = models.ManyToManyField(UC,   blank=True, related_name='areas_protegidas')
     pas  = models.ManyToManyField(PA,   blank=True, related_name='areas_protegidas')
@@ -759,9 +784,9 @@ class AreasProtegidas(models.Model):
     total_ha   = models.FloatField(default=0.0, editable=False)
 
     class Meta:
-        unique_together = ('atividade_registro', 'indicador')
         verbose_name = 'Áreas Protegidas'
         verbose_name_plural = 'Áreas Protegidas'
+        constraints = _satellite_constraints('areasprotegidas')
 
     def save(self, *args, **kwargs):
         if not self.pk:
@@ -786,11 +811,12 @@ FOCO_CHOICES = [
     ('governanca',   'Fortalecimento institucional/capacitação organizacional/governança'),
 ]
 
+
 # PESSOAS
 class Pessoas(models.Model):
     atividade_registro    = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE)
-    indicador             = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
-    indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    indicador             = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(class)s_set')
+    indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(class)s_fin_set')
     total_pessoas         = models.PositiveIntegerField(default=0)
     homens                = models.PositiveIntegerField(null=True, blank=True)
     mulheres              = models.PositiveIntegerField(null=True, blank=True)
@@ -802,7 +828,22 @@ class Pessoas(models.Model):
     foco                  = models.CharField(max_length=20, choices=FOCO_CHOICES, blank=True)
 
     class Meta:
-        unique_together = ('atividade_registro', 'indicador')
+        constraints = _satellite_constraints('pessoas') + [
+            models.CheckConstraint(
+                check=models.Q(homens__lte=models.F('total_pessoas')) | models.Q(homens__isnull=True),
+                name='pessoas_homens_lte_total',
+            ),
+            models.CheckConstraint(
+                check=models.Q(mulheres__lte=models.F('total_pessoas')) | models.Q(mulheres__isnull=True),
+                name='pessoas_mulheres_lte_total',
+            ),
+        ]
+
+    def clean(self):
+        super().clean()
+        if self.homens is not None and self.mulheres is not None:
+            if self.homens + self.mulheres > (self.total_pessoas or 0):
+                raise ValidationError('homens + mulheres nao pode exceder total_pessoas')
 
     def __str__(self):
         return f"{self.atividade_registro} - {self.total_pessoas}"
@@ -829,8 +870,8 @@ class Lei(models.Model):
 
 class Leis(models.Model):
     atividade_registro    = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE)
-    indicador             = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
-    indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    indicador             = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(class)s_set')
+    indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(class)s_fin_set')
     leis       = models.ManyToManyField(Lei, related_name='leis')
     total_leis = models.PositiveIntegerField(default=0, editable=False)
     total_em_desenvolvimento = models.PositiveIntegerField(default=0, editable=False)
@@ -839,7 +880,7 @@ class Leis(models.Model):
     total_implementadas      = models.PositiveIntegerField(default=0, editable=False)
 
     class Meta:
-        unique_together = ('atividade_registro', 'indicador')
+        constraints = _satellite_constraints('leis')
 
     def save(self, *args, **kwargs):
         if self.pk is None:
@@ -867,16 +908,34 @@ class LeiHistorico(models.Model):
 # ORGANIZAÇÕES
 class Organizacoes(models.Model):
     atividade_registro    = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE)
-    indicador             = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
-    indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    indicador             = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(class)s_set')
+    indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(class)s_fin_set')
     total_organizacoes    = models.PositiveIntegerField(default=0)
     org_sociedade_civil   = models.PositiveIntegerField(null=True, blank=True, verbose_name='Sociedade Civil')
     org_indigenas         = models.PositiveIntegerField(null=True, blank=True, verbose_name='Org. Indígenas')
     org_extrativistas     = models.PositiveIntegerField(null=True, blank=True, verbose_name='Org. Extrativistas')
+    org_governo           = models.PositiveIntegerField(null=True, blank=True, verbose_name='Governo')
     foco                  = models.CharField(max_length=20, choices=FOCO_CHOICES, blank=True)
 
     class Meta:
-        unique_together = ('atividade_registro', 'indicador')
+        constraints = _satellite_constraints('organizacoes') + [
+            models.CheckConstraint(
+                check=models.Q(org_sociedade_civil__lte=models.F('total_organizacoes')) | models.Q(org_sociedade_civil__isnull=True),
+                name='org_sc_lte_total',
+            ),
+            models.CheckConstraint(
+                check=models.Q(org_indigenas__lte=models.F('total_organizacoes')) | models.Q(org_indigenas__isnull=True),
+                name='org_indigenas_lte_total',
+            ),
+            models.CheckConstraint(
+                check=models.Q(org_extrativistas__lte=models.F('total_organizacoes')) | models.Q(org_extrativistas__isnull=True),
+                name='org_extrativistas_lte_total',
+            ),
+            models.CheckConstraint(
+                check=models.Q(org_governo__lte=models.F('total_organizacoes')) | models.Q(org_governo__isnull=True),
+                name='org_governo_lte_total',
+            ),
+        ]
 
     def __str__(self):
         return f"{self.atividade_registro} - {self.total_organizacoes} organizações"
@@ -884,8 +943,8 @@ class Organizacoes(models.Model):
 # EVENTOS
 class Evento(models.Model):
     atividade_registro    = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE)
-    indicador             = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
-    indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    indicador             = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(class)s_set')
+    indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(class)s_fin_set')
     formacoes   = models.PositiveIntegerField(null=True, blank=True)
     seminarios  = models.PositiveIntegerField(null=True, blank=True)
     encontros   = models.PositiveIntegerField(null=True, blank=True)
@@ -894,7 +953,7 @@ class Evento(models.Model):
     total       = models.PositiveIntegerField(default=0, editable=False)
 
     class Meta:
-        unique_together = ('atividade_registro', 'indicador')
+        constraints = _satellite_constraints('evento')
 
     def save(self, *args, **kwargs):
         self.total = sum((v or 0) for v in [self.formacoes, self.seminarios, self.encontros, self.reunioes])
@@ -914,11 +973,14 @@ REDE_TIPO_CHOICES = [
 
 class Rede(models.Model):
     atividade_registro    = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE)
-    indicador             = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
-    indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    indicador             = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(class)s_set')
+    indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(class)s_fin_set')
     nome       = models.CharField(max_length=255, blank=True)
     tipo       = models.CharField(max_length=50, choices=REDE_TIPO_CHOICES, blank=True)
     quantidade = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        constraints = _satellite_constraints('rede')
 
     def __str__(self):
         return f"{self.atividade_registro} — {self.nome or self.tipo} ({self.quantidade})"
@@ -927,8 +989,8 @@ class Rede(models.Model):
 # PEQUENOS PROJETOS
 class PequenoProjeto(models.Model):
     atividade_registro    = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE)
-    indicador             = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
-    indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    indicador             = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(class)s_set')
+    indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(class)s_fin_set')
     quantidade  = models.PositiveIntegerField(default=0)
     tipo        = models.CharField(max_length=100, blank=True)
     tema        = models.CharField(max_length=100, blank=True)
@@ -937,6 +999,7 @@ class PequenoProjeto(models.Model):
     class Meta:
         verbose_name = 'Pequeno Projeto'
         verbose_name_plural = 'Pequenos Projetos'
+        constraints = _satellite_constraints('pequenoprojeto')
 
     def __str__(self):
         return f"{self.atividade_registro} — {self.quantidade} pequenos projetos"
@@ -952,11 +1015,14 @@ FUNDO_TIPO_CHOICES = [
 
 class Fundo(models.Model):
     atividade_registro    = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE)
-    indicador             = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
-    indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    indicador             = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(class)s_set')
+    indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(class)s_fin_set')
     quantidade  = models.PositiveIntegerField(default=0)
     valor_total = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
     tipo        = models.CharField(max_length=50, choices=FUNDO_TIPO_CHOICES, blank=True)
+
+    class Meta:
+        constraints = _satellite_constraints('fundo')
 
     def __str__(self):
         return f"{self.atividade_registro} — {self.quantidade} fundos"
@@ -965,13 +1031,13 @@ class Fundo(models.Model):
 # OUTRO
 class Outro(models.Model):
     atividade_registro    = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE)
-    indicador             = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
-    indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    indicador             = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(class)s_set')
+    indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(class)s_fin_set')
     descricao = models.TextField(blank=True)
     valor     = models.FloatField(null=True, blank=True)
 
     class Meta:
-        unique_together = ('atividade_registro', 'indicador')
+        constraints = _satellite_constraints('outro')
 
     def __str__(self):
         return f"{self.atividade_registro} — outro"
@@ -1007,8 +1073,8 @@ class Plano(models.Model):
 
 class Planos(models.Model):
     atividade_registro    = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE)
-    indicador             = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
-    indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    indicador             = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(class)s_set')
+    indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(class)s_fin_set')
     plano = models.ForeignKey(
         'Plano', on_delete=models.SET_NULL,
         null=True, blank=True, related_name='registros',
@@ -1022,6 +1088,9 @@ class Planos(models.Model):
         max_length=255, choices=Plano.SITUACAO_CHOICES,
         default='em desenvolvimento'
     )
+
+    class Meta:
+        constraints = _satellite_constraints('planos')
 
     def save(self, *args, **kwargs):
         plano = self.plano
@@ -1073,8 +1142,8 @@ class Parceria(models.Model):
 
 class Parcerias(models.Model):
     atividade_registro    = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE)
-    indicador             = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
-    indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    indicador             = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(class)s_set')
+    indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(class)s_fin_set')
     parcerias             = models.ManyToManyField(Parceria, related_name='parcerias')
     total_parcerias                  = models.PositiveIntegerField(default=0, editable=False)
     total_governo_federal            = models.PositiveIntegerField(default=0, editable=False)
@@ -1085,7 +1154,7 @@ class Parcerias(models.Model):
     total_inst_pesquisa              = models.PositiveIntegerField(default=0, editable=False)
 
     class Meta:
-        unique_together = ('atividade_registro', 'indicador')
+        constraints = _satellite_constraints('parcerias')
 
     def save(self, *args, **kwargs):
         if self.pk is None:
@@ -1106,8 +1175,8 @@ class Parcerias(models.Model):
 
 class Mobilizados(models.Model):
     atividade_registro = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE)
-    indicador = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
-    indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    indicador = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(class)s_set')
+    indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(class)s_fin_set')
     valor_mobilizado = models.DecimalField(max_digits=12, decimal_places=2)
     tipo_apoio = models.CharField(max_length=255, choices=[
         ('Contribuição em dinheiro', 'Contribuição em dinheiro'),
@@ -1129,8 +1198,7 @@ class Mobilizados(models.Model):
     class Meta:
         verbose_name = 'Mobilizado'
         verbose_name_plural = 'Mobilizados'
-        unique_together = ('atividade_registro', 'indicador')
-        constraints = [
+        constraints = _satellite_constraints('mobilizados') + [
             models.CheckConstraint(
                 check=models.Q(valor_mobilizado__gt=0),
                 name='valor_mobilizado_positive',
@@ -1161,8 +1229,8 @@ class Produto(models.Model):
 
 class Produtos(models.Model):
     atividade_registro    = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE)
-    indicador             = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
-    indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    indicador             = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(class)s_set')
+    indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(class)s_fin_set')
     produtos              = models.ManyToManyField(Produto, related_name='produtos')
     total_produtos        = models.PositiveIntegerField(default=0, editable=False)
     total_revistas        = models.PositiveIntegerField(default=0, editable=False)
@@ -1174,7 +1242,7 @@ class Produtos(models.Model):
     total_cartilhas       = models.PositiveIntegerField(default=0, editable=False)
 
     class Meta:
-        unique_together = ('atividade_registro', 'indicador')
+        constraints = _satellite_constraints('produtos')
 
     def save(self, *args, **kwargs):
         if self.pk is None:
@@ -1213,13 +1281,13 @@ class Contrato(models.Model):
 
 class Contratos(models.Model):
     atividade_registro    = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE)
-    indicador             = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
-    indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    indicador             = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(class)s_set')
+    indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(class)s_fin_set')
     contratos   = models.ManyToManyField(Contrato, related_name='contratos_registro')
     valor_total = models.DecimalField(max_digits=15, decimal_places=2, default=0, editable=False)
 
     class Meta:
-        unique_together = ('atividade_registro', 'indicador')
+        constraints = _satellite_constraints('contratos')
 
     def save(self, *args, **kwargs):
         if self.pk is None:
@@ -1242,7 +1310,7 @@ class Modelo(models.Model):
     
 class AtividadeRegistroModelo(models.Model):
     atividade_registro = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE)
-    indicador = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    indicador = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(class)s_set')
     modelo = models.ForeignKey(Modelo, on_delete=models.CASCADE)
     status = models.CharField(
         max_length=50,

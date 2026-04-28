@@ -332,3 +332,54 @@ Organizacoes(total_organizacoes=10, org_governo=3).save()  # OK
 
 ### Dependencias
 T-2.2 (constraints base ja aplicadas).
+
+---
+
+## Resultado da execução — 2026-04-27
+
+### Status
+Onda 2 concluída e validada no ambiente Docker local.
+
+### Implementação realizada
+
+- T-2.1: substituído `related_name='+'` por nomes reversos explícitos nos satélites cobertos pela onda.
+- T-2.2: removidos `unique_together` legados dos satélites do Grupo A e adicionadas constraints condicionais nos satélites com os dois FKs (`indicador` e `indicador_financiador`).
+- T-2.3: adicionadas constraints de `Pessoas` para `homens <= total_pessoas` e `mulheres <= total_pessoas`, além de `clean()` para impedir `homens + mulheres > total_pessoas`.
+- T-2.4: adicionado suporte a `org_governo` em `Organizacoes`, `Indicador`, `IndicadorFinanciador`, `views.py` e `admin.py`.
+
+### Observação sobre `AtividadeRegistroModelo`
+
+Nesta onda foi alterado apenas o `related_name` de `AtividadeRegistroModelo.indicador`. As constraints satélites completas não foram aplicadas nele agora porque o model ainda não possui `indicador_financiador`; essa inclusão está prevista na Onda 4 (`T-4.7`).
+
+### Migration
+
+Migration gerada e aplicada:
+
+```text
+src/ieb/migrations/0034_alter_area_unique_together_and_more.py
+```
+
+A migration inclui:
+
+- remoção dos `unique_together` legados dos satélites do Grupo A;
+- campos `desag_org_governo` em `Indicador` e `IndicadorFinanciador`;
+- campo `org_governo` em `Organizacoes`;
+- alterações de `related_name`;
+- constraints `*_single_fk`, `*_unique_indicador` e `*_unique_ind_fin`;
+- constraints adicionais de `Pessoas` e `Organizacoes`.
+
+### Validações executadas
+
+- Verificação pré-migration de duplicidades e registros com ambos FKs preenchidos: zero bloqueios nos satélites verificados.
+- `python manage.py migrate ieb`: migration aplicada com sucesso.
+- `python manage.py check`: sem issues.
+- `python manage.py makemigrations ieb --check --dry-run`: sem mudanças pendentes no app `ieb`.
+- `curl -I http://localhost/ieb/atividade_registro/v2/`: HTTP 200.
+- Testes com dados temporários em transação com rollback confirmaram:
+  - `*_single_fk` bloqueia `indicador` e `indicador_financiador` preenchidos simultaneamente;
+  - `pessoas_homens_lte_total` bloqueia `homens > total_pessoas`;
+  - `org_governo_lte_total` bloqueia `org_governo > total_organizacoes`;
+  - `Pessoas.clean()` bloqueia `homens + mulheres > total_pessoas`;
+  - reverse relations `pessoas_set` e `pessoas_fin_set` existem.
+- Rollback dos dados temporários confirmado: zero artefatos de teste persistidos.
+

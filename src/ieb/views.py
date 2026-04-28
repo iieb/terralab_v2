@@ -104,7 +104,7 @@ def load_indicadores(request):
         'desag_homens', 'desag_mulheres', 'desag_jovens',
         'desag_pct', 'desag_pct_indigenas', 'desag_pct_extrativistas', 'desag_pct_quilombolas',
         'desag_servidor_publico', 'tem_foco',
-        'desag_org_sc', 'desag_org_indigenas', 'desag_org_extrativistas',
+        'desag_org_sc', 'desag_org_indigenas', 'desag_org_extrativistas', 'desag_org_governo',
         'desag_restrito', 'desag_direto', 'desag_indireto',
         'desag_ti', 'desag_uc', 'desag_pa', 'desag_tuc',
         'desag_formacoes', 'desag_seminarios', 'desag_encontros', 'desag_reunioes',
@@ -579,6 +579,7 @@ def _atividade_registro_process(request, template='atividade_registro_form.html'
                         elif field_name == 'org_sociedade_civil': d['org_sociedade_civil'] = _int(value)
                         elif field_name == 'org_indigenas': d['org_indigenas'] = _int(value)
                         elif field_name == 'org_extrativistas': d['org_extrativistas'] = _int(value)
+                        elif field_name == 'org_governo': d['org_governo'] = _int(value)
                         elif field_name == 'foco': d['foco'] = value
 
                     elif tipo == 'area':
@@ -909,6 +910,7 @@ def _atividade_registro_process(request, template='atividade_registro_form.html'
             {"name": "org_sociedade_civil", "type": "number", "label": "Sociedade Civil", "desag_key": "desag_org_sc"},
             {"name": "org_indigenas", "type": "number", "label": "Org. Indígenas", "desag_key": "desag_org_indigenas"},
             {"name": "org_extrativistas", "type": "number", "label": "Org. Extrativistas", "desag_key": "desag_org_extrativistas"},
+            {"name": "org_governo", "type": "number", "label": "Governo", "desag_key": "desag_org_governo"},
             {"name": "foco", "type": "select", "label": "Foco", "options": _foco_options, "desag_key": "tem_foco"},
         ],
         "area": [

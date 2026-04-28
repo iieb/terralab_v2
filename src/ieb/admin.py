@@ -156,7 +156,7 @@ class IndicadorAdmin(admin.ModelAdmin):
             'classes': ('collapse',),
         }),
         ('Desagregações — Organizações', {
-            'fields': ('desag_org_sc', 'desag_org_indigenas', 'desag_org_extrativistas'),
+            'fields': ('desag_org_sc', 'desag_org_indigenas', 'desag_org_extrativistas', 'desag_org_governo'),
             'classes': ('collapse',),
             'description': 'tem_foco acima também se aplica a organizações.',
         }),
@@ -203,7 +203,7 @@ class IndicadorFinanciadorAdmin(admin.ModelAdmin):
             'classes': ('collapse',),
         }),
         ('Desagregações — Organizações', {
-            'fields': ('desag_org_sc', 'desag_org_indigenas', 'desag_org_extrativistas'),
+            'fields': ('desag_org_sc', 'desag_org_indigenas', 'desag_org_extrativistas', 'desag_org_governo'),
             'classes': ('collapse',),
             'description': 'tem_foco acima também se aplica a organizações.',
         }),
