@@ -193,3 +193,82 @@ a.total_ha  # Esperado: 1000.0
 
 ### Dependencias
 Onda 2 concluida (constraints ja aplicadas, related_names ja explicitos).
+
+---
+
+## Resultado da execucao — 2026-04-27
+
+Status: **DONE**.
+
+### Arquivos alterados
+
+- `src/ieb/models.py`
+- `src/ieb/signals.py`
+- `src/ieb/apps.py`
+
+### Implementacao realizada
+
+- Criado `src/ieb/signals.py` com receivers `m2m_changed` para:
+  - `Leis.leis`
+  - `Parcerias.parcerias`
+  - `Produtos.produtos`
+  - `Contratos.contratos`
+  - `Area.tis`, `Area.ucs`, `Area.pas`, `Area.tucs`
+  - `AreasProtegidas.tis`, `AreasProtegidas.ucs`, `AreasProtegidas.pas`, `AreasProtegidas.tucs`
+- Removida a logica de recalculo M2M dos `save()` de `Leis`, `Parcerias`, `Produtos` e `Contratos`.
+- Preservado o primeiro save de `Area` e `AreasProtegidas` para obter `pk`, removendo apenas a logica de calculo e o save final.
+- Registrado `ieb.signals` em `IebConfig.ready()`.
+
+### Ajuste tecnico durante validacao
+
+`Area` e `AreasProtegidas` mantem `save()` customizado apenas para criacao inicial. Por isso, os signals desses dois models persistem os totais via `Model.objects.filter(pk=instance.pk).update(...)`, evitando reentrar no `save()` customizado e garantindo que o recálculo seja salvo no banco.
+
+### Migration
+
+Nenhuma migration foi gerada. Validado com:
+
+```text
+No changes detected in app 'ieb'
+```
+
+### Validacoes executadas
+
+- `python manage.py check`:
+
+```text
+System check identified no issues (5 silenced).
+```
+
+- Importacao de `ieb.signals`:
+
+```text
+signals_import_ok
+```
+
+- Confirmacao do `AppConfig` carregado:
+
+```text
+ieb.apps IebConfig
+```
+
+- Teste funcional com dados temporarios em transacao revertida:
+
+```text
+m2m_signals_ok
+```
+
+Cobertura do teste funcional:
+
+- add/remove em `Parcerias.parcerias` atualizando totais;
+- add em `Leis.leis` atualizando totais por situacao;
+- add em `Produtos.produtos` atualizando totais por tipo;
+- add/clear em `Contratos.contratos` atualizando `valor_total` e retornando `0.00` quando vazio;
+- add em `Area.tis` e `Area.ucs` atualizando `total_ha`;
+- add em `AreasProtegidas.tis`, `ucs`, `pas`, `tucs` atualizando contadores e `total_ha`.
+
+- Rota local validada:
+
+```text
+http://localhost/ieb/atividade_registro/v2/
+HTTP 200
+```

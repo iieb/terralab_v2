@@ -754,14 +754,6 @@ class Area(models.Model):
     def save(self, *args, **kwargs):
         if not self.pk:
             super().save(*args, **kwargs)
-        if self.ha_restrito is not None:
-            self.total_ha = self.ha_restrito
-        else:
-            total = 0.0
-            for m2m in (self.tis, self.ucs, self.pas, self.tucs):
-                total += m2m.aggregate(s=models.Sum('area'))['s'] or 0.0
-            self.total_ha = total
-        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.atividade_registro} — {self.total_ha} ha"
@@ -791,16 +783,6 @@ class AreasProtegidas(models.Model):
     def save(self, *args, **kwargs):
         if not self.pk:
             super().save(*args, **kwargs)
-        self.total_tis  = self.tis.count()
-        self.total_ucs  = self.ucs.count()
-        self.total_pas  = self.pas.count()
-        self.total_tucs = self.tucs.count()
-        self.total = self.total_tis + self.total_ucs + self.total_pas + self.total_tucs
-        ha = 0.0
-        for m2m in (self.tis, self.ucs, self.pas, self.tucs):
-            ha += m2m.aggregate(s=models.Sum('area'))['s'] or 0.0
-        self.total_ha = ha
-        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.atividade_registro} — {self.total} áreas protegidas"
@@ -881,16 +863,6 @@ class Leis(models.Model):
 
     class Meta:
         constraints = _satellite_constraints('leis')
-
-    def save(self, *args, **kwargs):
-        if self.pk is None:
-            super().save(*args, **kwargs)
-        self.total_leis              = self.leis.count()
-        self.total_em_desenvolvimento = self.leis.filter(situacao='em desenvolvimento').count()
-        self.total_propostas          = self.leis.filter(situacao='proposto').count()
-        self.total_aprovadas          = self.leis.filter(situacao='aprovado').count()
-        self.total_implementadas      = self.leis.filter(situacao='implementado').count()
-        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.atividade_registro} - {self.total_leis} leis"
@@ -1156,18 +1128,6 @@ class Parcerias(models.Model):
     class Meta:
         constraints = _satellite_constraints('parcerias')
 
-    def save(self, *args, **kwargs):
-        if self.pk is None:
-            super().save(*args, **kwargs)
-        self.total_parcerias                  = self.parcerias.count()
-        self.total_governo_federal            = self.parcerias.filter(tipo='governo_federal').count()
-        self.total_governo_estadual_municipal = self.parcerias.filter(tipo='governo_estadual_municipal').count()
-        self.total_osc_ong                    = self.parcerias.filter(tipo='osc_ong').count()
-        self.total_organizacao_internacional  = self.parcerias.filter(tipo='organizacao_internacional').count()
-        self.total_inst_ensino                = self.parcerias.filter(tipo='inst_ensino').count()
-        self.total_inst_pesquisa              = self.parcerias.filter(tipo='inst_pesquisa').count()
-        super().save(*args, **kwargs)
-
     def __str__(self):
         return f"{self.atividade_registro} - {self.total_parcerias} parcerias"
     
@@ -1244,19 +1204,6 @@ class Produtos(models.Model):
     class Meta:
         constraints = _satellite_constraints('produtos')
 
-    def save(self, *args, **kwargs):
-        if self.pk is None:
-            super().save(*args, **kwargs)
-        self.total_produtos        = self.produtos.count()
-        self.total_revistas        = self.produtos.filter(tipo='revista').count()
-        self.total_boletins        = self.produtos.filter(tipo='boletim').count()
-        self.total_livros          = self.produtos.filter(tipo='livro').count()
-        self.total_sistematizacoes = self.produtos.filter(tipo='sistematizacao').count()
-        self.total_notas_tecnicas  = self.produtos.filter(tipo='nota_tecnica').count()
-        self.total_relatorios      = self.produtos.filter(tipo='relatorio').count()
-        self.total_cartilhas       = self.produtos.filter(tipo='cartilha').count()
-        super().save(*args, **kwargs)
-
     def __str__(self):
         return f"{self.atividade_registro} - {self.total_produtos} produtos"
     
@@ -1288,12 +1235,6 @@ class Contratos(models.Model):
 
     class Meta:
         constraints = _satellite_constraints('contratos')
-
-    def save(self, *args, **kwargs):
-        if self.pk is None:
-            super().save(*args, **kwargs)
-        self.valor_total = self.contratos.aggregate(total=models.Sum('valor'))['total'] or 0
-        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.atividade_registro} - {self.contratos.count()} contratos"
