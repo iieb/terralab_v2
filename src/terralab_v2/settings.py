@@ -179,3 +179,7 @@ if LDAP_ENABLED and "geonode_ldap" not in INSTALLED_APPS:
 
 # IEB — e-mail fixo para notificações de monitoramento
 MONITORING_EMAIL = os.getenv("MONITORING_EMAIL", "monitoramento@iieb.org.br")
+
+# Django 4.x requires full URLs in CSRF_TRUSTED_ORIGINS (ALLOWED_HOSTS is no longer sufficient)
+_siteurl = SITEURL.rstrip("/")
+CSRF_TRUSTED_ORIGINS = [_siteurl, "http://localhost", "http://127.0.0.1"]
