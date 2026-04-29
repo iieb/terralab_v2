@@ -39,26 +39,26 @@
 
 | # | Indicador Danida | Tipo no sistema | Deve ser IEB? | Deve ser financiador (Danida)? | Ambos? | Se ambos, qual o indicador IEB equivalente? |
 |---|------------------|-----------------|---------------|-------------------------------|--------|---------------------------------------------|
-| 1 | Número de chamadas do fundo Rutî | `fundos` | ☐ | ☐ | ☐ | |
+| 1 | Número de chamadas do fundo Rutî | `fundos` | ☐ | ☐ | ☐ |  |
 | 2 | Hectares de agroflorestas implementados | `area` | ☐ | ☐ | ☐ | |
 | 3 | Hectares de TIs com autonomia no monitoramento e gestão da informação | `area` | ☐ | ☐ | ☐ | |
 | 4 | OIs com aumento no acesso a políticas públicas para geração de renda | `organizacoes` | ☐ | ☐ | ☐ | |
 | 5 | OIs com melhoria na gestão organizacional e participação ativa em incidência política para proteção territorial | `organizacoes` | ☐ | ☐ | ☐ | |
-| 6 | Castanheiros com aumento na geração de renda | `pessoas` | ☐ | ☐ | ☐ | |
-| 7 | Indígenas criadores de gado com aumento da geração de renda | `pessoas` | ☐ | ☐ | ☐ | |
+| 6 | Castanheiros com aumento na geração de renda | `pessoas` | ☐ | ☐ | ☐ | pessoas com aumento na geração de renda |
+| 7 | Indígenas criadores de gado com aumento da geração de renda | `pessoas` | ☐ | ☐ | ☐ | pessoas com geração de renda |
 | 8 | Indígenas realizando ações de monitoramento e proteção territorial | `pessoas` | ☐ | ☐ | ☐ | |
 | 9 | Indígenas treinados para promover ações de mitigação de mudança climática | `pessoas` | ☐ | ☐ | ☐ | |
-| 10 | Indígenas treinados para diversificação da produção e cooperativismo para segurança alimentar | `pessoas` | ☐ | ☐ | ☐ | |
-| 11 | Indivíduos treinados em áreas relacionadas ao fortalecimento institucional de OIs | `pessoas` | ☐ | ☐ | ☐ | |
+| 10 | Indígenas treinados para diversificação da produção e cooperativismo para segurança alimentar | `pessoas` | ☐ | x | ☐ | |
+| 11 | Indivíduos treinados em áreas relacionadas ao fortalecimento institucional de OIs | `pessoas` | ☐ | x | ☐ | |
 | 12 | Planos de adaptação a mudanças climáticas desenvolvidos e implementados | `planos` | ☐ | ☐ | ☐ | |
 | 13 | PGTAs com ações implementadas para mitigação das mudanças climáticas | `planos` | ☐ | ☐ | ☐ | |
-| 14 | Plano de negócios da pecuária sustentável desenvolvida | `planos` | ☐ | ☐ | ☐ | |
+| 14 | Plano de negócios da pecuária sustentável desenvolvida | `planos` | ☐ | ☐ | ☐ | planos de negocio desenvolvido |
 
 **Premissa padrão (se não responder):** Bloqueado — não é possível avançar sem esta definição.
 
 **Resposta do Cliente:**
 
-> 
+> Conversando bastante com o parceiro foi entendido que faz mais sentido chamar o indicador de indicador do projeto e não indicador do financiador e depois colocar todos os indicadores como indicador do projeto, vai simplificar bastante as coisas e precisa replanejar tudo em cima disso agora
 
 ---
 
@@ -77,18 +77,18 @@
 
 | # | Indicador | Precisa de total? | Precisa de homens/mulheres? | Precisa de jovens? | Precisa de indígenas? | Precisa de extrativistas? | Precisa de quilombolas? | Precisa de servidor público? |
 |---|-----------|-------------------|----------------------------|--------------------|-----------------------|--------------------------|------------------------|------------------------------|
-| 1 | Castanheiros com aumento na geração de renda | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ |
-| 2 | Indígenas criadores de gado com aumento da geração de renda | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ |
-| 3 | Indígenas realizando ações de monitoramento e proteção territorial | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ |
-| 4 | Indígenas treinados — mitigação de mudança climática | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ |
-| 5 | Indígenas treinados — diversificação da produção e cooperativismo | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ |
-| 6 | Indivíduos treinados — fortalecimento institucional de OIs | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ |
+| 1 | Castanheiros com aumento na geração de renda | x | x | x | x | ☐ | ☐ | ☐ |
+| 2 | Indígenas criadores de gado com aumento da geração de renda | x | x | x | x | ☐ | ☐ | ☐ |
+| 3 | Indígenas realizando ações de monitoramento e proteção territorial | x | x | x | x | ☐ | ☐ | ☐ |
+| 4 | Indígenas treinados — mitigação de mudança climática | x | x | x | x | ☐ | ☐ | ☐ |
+| 5 | Indígenas treinados — diversificação da produção e cooperativismo | x | x | x | x | ☐ | ☐ | ☐ |
+| 6 | Indivíduos treinados — fortalecimento institucional de OIs | x | x | x | x | ☐ | ☐ | ☐ |
 
 **Premissa padrão (se não responder):** Assumir apenas `total_pessoas` para todos. Cliente poderá solicitar desagregações adicionais após a entrega.
 
 **Resposta do Cliente:**
 
-> 
+>  
 
 ---
 
@@ -108,14 +108,15 @@
 
 | # | Indicador | Precisa de total? | Precisa de org_indigena? | Precisa de org_governo? | Precisa de foco de atuação? | Precisa de acesso a políticas? | Precisa de gestão organizacional? |
 |---|-----------|-------------------|-------------------------|------------------------|----------------------------|-------------------------------|----------------------------------|
-| 1 | OIs com aumento no acesso a políticas públicas para geração de renda | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ |
-| 2 | OIs com melhoria na gestão organizacional e incidência política | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ |
+| 1 | OIs com aumento no acesso a políticas públicas para geração de renda | x | x | ☐ | x | ☐ | ☐ |
+| 2 | OIs com melhoria na gestão organizacional e incidência política | x | x | ☐ | x | ☐ | ☐ |
 
 **Premissa padrão (se não responder):** Assumir `total_organizacoes` + `org_gestao_organizacional` para o indicador 2; `total_organizacoes` + `org_acesso_politicas_publicas` para o indicador 1.
 
 **Resposta do Cliente:**
 
-> 
+> verificar o FOCO_CHOICES para representar as demandas da instituição que são: Fortalecimento da sociedade civil, Governança Territorial e Ambiental, Defesa de Direitos, Economias da Sociobiodiversidade
+> as variaveis - `org_acesso_politicas_publicas` e `org_gestao_organizacional` parecem não existir para o indicador organização, revisar isso
 
 ---
 
@@ -133,24 +134,24 @@ O indicador "hectares de TIs com autonomia no monitoramento e gestão da informa
 
 1. O valor de hectares para o indicador de TIs com autonomia será:
    - ☐ Digitado manualmente pelo usuário em `total_ha`
-   - ☐ Calculado automaticamente a partir das TIs vinculadas à atividade (M2M)
+   - x Calculado automaticamente a partir das TIs vinculadas à atividade (M2M)
    - ☐ Ambos (manual como referência, M2M como valor oficial)
 
 2. Se for M2M, a seleção de TIs será feita:
-   - ☐ No formulário de registro de atividade
+   - x No formulário de registro de atividade
    - ☐ No admin do Django
    - ☐ Em ambos
 
 3. Qual a unidade e precisão desejada para hectares?
    - ☐ Número inteiro (hectares)
-   - ☐ Decimal com 2 casas (hectares com precisão de 0,01 ha)
+   - x Decimal com 2 casas (hectares com precisão de 0,01 ha)
    - ☐ Decimal com 4 casas (hectares com precisão de 0,0001 ha)
 
 **Premissa padrão (se não responder):** Implementar M2M no formulário. Caso o mecanismo de sinais M2M não esteja pronto, usar campo manual como contingência e migrar para M2M no backlog. Precisão: inteiro.
 
 **Resposta do Cliente:**
 
-> 
+> 1 - ainda sera necessário reformular o model tis a partir da submissão de uma camada geografica
 
 ---
 
@@ -191,7 +192,7 @@ O sistema atual calcula metas de planos por contagem de registros ou score, depe
 
 **Resposta do Cliente:**
 
-> 
+> por enquanto vamos apenas relacionar o registro de atividades (formulario preenchido) com um plano especifico, o score sera retrabalhado futuramente. Por enquanto precisamo saber quantas atividades foram necessaria para fazer esse plano
 
 ---
 
@@ -227,7 +228,7 @@ O indicador Danida é "número de chamadas do fundo Rutî". É necessário confi
 
 **Resposta do Cliente:**
 
-> 
+> O fundo vai ter uma chamada por ano ao longo de tres anos, então por enquanto vai seguir a mesma logica do planos, apenas relacionar os registros de atividades (formularios preenchidos) ao fundo.
 
 ---
 
@@ -255,7 +256,7 @@ Exemplo: "Indígenas treinados em mitigação" (Danida) com `equivalente_ieb` �
 
 **Resposta do Cliente:**
 
-> 
+> por enquanto nao vamos ter relação de equivalencia, o ieb ainda vai fazer a discussão institucional para definir quais são os "macro indicadores"
 
 ---
 
@@ -277,19 +278,19 @@ Para o projeto Danida, isso significa que dados podem ser inseridos por pessoas 
 
 1. O formulário de registro de atividade deve exigir autenticação?
    - ☐ Sim, todos os usuários devem estar logados para lançar dados
-   - ☐ Sim, mas apenas para produção (ambiente de teste pode ficar aberto)
+   - x Sim, mas apenas para produção (ambiente de teste pode ficar aberto)
    - ☐ Não, manter acesso aberto como está
 
 2. Se exigir autenticação, qual o critério de autorização?
    - ☐ Qualquer usuário logado pode registrar atividades
-   - ☐ Apenas usuários vinculados a uma Equipe do projeto
+   - x Apenas usuários vinculados a uma Equipe do projeto
    - ☐ Apenas usuários com perfil IEB administrativo
 
 **Premissa padrão (se não responder):** Adicionar `@login_required` em todas as views de escrita. Qualquer usuário logado pode registrar. A política de autorização por equipe será implementada posteriormente.
 
 **Resposta do Cliente:**
 
-> 
+> o user admin pode acessar todos os formularios
 
 ---
 
@@ -304,19 +305,19 @@ Corrigir isso exige renomear as variáveis no template para bater com o que a vi
 **Perguntas:**
 
 1. A tela de detalhe precisa exibir os indicadores lançados?
-   - ☐ Sim, é essencial para conferência e auditoria dos lançamentos
+   - x Sim, é essencial para conferência e auditoria dos lançamentos
    - ☐ Sim, mas apenas o resumo (totais), sem desagregações
    - ☐ Não, a conferência será feita pelo admin do Django ou relatório externo
 
 2. O template de PDF (usado para exportar o registro) também deve ser corrigido?
-   - ☐ Sim, PDF deve mostrar os mesmos dados do detalhe
+   - x Sim, PDF deve mostrar os mesmos dados do detalhe
    - ☐ Não, PDF não será usado no projeto Danida
 
 **Premissa padrão (se não responder):** Corrigir template de detalhe e PDF. Exibir totais e desagregações quando disponíveis.
 
 **Resposta do Cliente:**
 
-> 
+> os tamplates tanto pdf quanto da tela de detalhes estão com muitos icones de IA, precisamos de icones sobreos e uma formatação mais formal para relatórios
 
 ---
 
@@ -333,17 +334,17 @@ Essa correção (T-3.1 do plano anterior) é necessária se o indicador de TIs c
 1. Os dados de hectares serão inseridos principalmente por qual via?
    - ☐ Formulário de registro de atividade (onde o `save()` funciona)
    - ☐ Admin do Django (onde o `save()` atual NÃO funciona para M2M)
-   - ☐ Ambos
+   - x Ambos
 
 2. Se a resposta de A.4 for "M2M com TIs", devemos implementar os sinais `m2m_changed` agora ou postergar?
    - ☐ Implementar agora (parte da Onda D2)
-   - ☐ Postergar para o backlog pós-Danida (assumir risco de inconsistência)
+   - x Postergar para o backlog pós-Danida (assumir risco de inconsistência)
 
 **Premissa padrão (se não responder):** Se A.4 usar M2M, implementar sinais `m2m_changed` na Onda D2. Caso contrário, postergar.
 
 **Resposta do Cliente:**
 
-> 
+> ter certeza que essa alteração esteja no backlog
 
 ---
 
@@ -366,7 +367,7 @@ Se a Danida usar indicadores de planos como financiador (A.1), essa correção �
 
 **Resposta do Cliente:**
 
-> 
+> relembrando que por hora todos os indicadores serao indicadores de projeto, como descrito anteriormente.
 
 ---
 
@@ -381,7 +382,7 @@ Essa mudança envolve ~8 migrations e alterações em todos os modelos de área 
 **Perguntas:**
 
 1. A precisão atual (número decimal com possíveis erros de arredondamento) é aceitável para o relatório Danida?
-   - ☐ Sim, a precisão atual é suficiente
+   - x Sim, a precisão atual é suficiente
    - ☐ Não, precisão decimal exata é obrigatória
    - ☐ Não sei, preciso de orientação técnica
 
@@ -415,12 +416,12 @@ Hoje o sistema não tem essa camada — qualquer usuário logado vê todos os pr
 
 1. Para o projeto Danida, diferentes organizações (IEB, CIR, outras) precisam de acessos separados?
    - ☐ Sim, cada organização deve ver apenas seus próprios projetos e dados
-   - ☐ Não, todos os usuários podem ver todos os projetos Danida
+   - x Não, todos os usuários podem ver todos os projetos Danida
    - ☐ Apenas o IEB acessa o sistema; outras organizações não terão usuários
 
 2. Um mesmo usuário pode atuar por mais de uma organização?
    - ☐ Sim (ex: mesma pessoa trabalha no IEB e na CIR)
-   - ☐ Não, cada usuário pertence a uma única organização
+   - x Não, cada usuário pertence a uma única organização
 
 3. Qual a urgência dessa política de acesso?
    - ☐ Deve estar pronta para a entrega Danida (Onda D2)
@@ -431,7 +432,8 @@ Hoje o sistema não tem essa camada — qualquer usuário logado vê todos os pr
 
 **Resposta do Cliente:**
 
-> 
+> o model equipe esta tendo uma confusão semântica, quando foi pensando no model equipe era para abarcar o membro de uma equipe e nao a equipe, a equipe do projeto  esta representada pelo conjunto de membros ligados a um projeto (pelo model equipeprojeto). 
+> 1 - esta tendo confusão, Danida é um projeto expecifico, todo usuario conectado a esse projeto vai ter acesso ao formulario. 
 
 ---
 
@@ -446,18 +448,18 @@ A proposta é adicionar um campo `equipe` (FK para `Equipe`) nesses históricos,
 **Perguntas:**
 
 1. É importante saber qual equipe/organização alterou a situação de um plano ou lei?
-   - ☐ Sim, para auditoria e rastreabilidade
+   - x Sim, para auditoria e rastreabilidade
    - ☐ Não, o histórico atual (nome textual) é suficiente
 
 2. Esta alteração deve ser feita:
    - ☐ Na Onda D2 (antes da entrega Danida)
-   - ☐ No backlog pós-Danida
+   - x No backlog pós-Danida
 
 **Premissa padrão (se não responder):** Postergar para o backlog. Manter histórico com `CharField` atual durante o ciclo Danida.
 
 **Resposta do Cliente:**
 
-> 
+> nao vamos usar leis agora e o planos foi simplificado
 
 ---
 
@@ -474,7 +476,7 @@ A proposta é adicionar um campo `equipe` (FK para `Equipe`) nesses históricos,
 
 1. Existe possibilidade de uso futuro do tipo "Outro"?
    - ☐ Sim, manter no código (corrigir apenas a documentação)
-   - ☐ Não, remover completamente (modelo + choices + documentação)
+   - x Não, remover completamente (modelo + choices + documentação)
    - ☐ Manter como está, resolver depois
 
 2. Se for remover, quando?
@@ -485,7 +487,7 @@ A proposta é adicionar um campo `equipe` (FK para `Equipe`) nesses históricos,
 
 **Resposta do Cliente:**
 
-> 
+> verificar pois ja deve ter sido removido, se nao remover agora
 
 ---
 
@@ -505,7 +507,7 @@ Para evitar ambiguidade, precisamos de um protocolo claro de decisão.
 | T-D2.4 | Constraints e correções em `Fundo` | D1 encontrar lacuna em fundos | ☐ Executar se houver lacuna ☐ Executar sempre ☐ Pular |
 | T-D2.5 | `Planos` com `IndicadorFinanciador` | Planos como financiador (ver B.4) | ☐ Executar ☐ Pular |
 | T-D2.6 | Constraints em `Pessoas` | D1 encontrar lacuna ou D0 exigir desagregações | ☐ Executar se houver lacuna ☐ Executar sempre ☐ Pular |
-| T-D2.7 | `Organizacoes` + `org_governo` | D0 confirmar necessidade de subgrupos | ☐ Executar se houver lacuna ☐ Executar sempre ☐ Pular |
+| T-D2.7 | `Organizacoes` + `org_governo` | D0 confirmar necessidade de subgrupos | ☐ Executar se houver lacuna ☐ Executar sempre x Pular |
 | T-D2.8 | Sinais M2M para `Area`/TIs | A.4 confirmar M2M (ver B.3) | ☐ Executar ☐ Pular |
 | T-D2.9 | `DecimalField` para áreas/metas | Precisão decimal exigida (ver B.5) | ☐ Executar ☐ Pular |
 | T-D2.2 | Históricos de Lei/Plano com `Equipe` | Auditoria por equipe necessária (ver C.2) | ☐ Executar ☐ Pular |
@@ -514,8 +516,13 @@ Para evitar ambiguidade, precisamos de um protocolo claro de decisão.
 
 **Resposta do Cliente:**
 
-> 
-
+> T-D2.3 - resolvida nas perguntas anteriores
+> T-D2.4 - fundo vai ser simplificado, como nas respostas anteriores
+> T-D2.5 - planos idem
+> T-D2.5 - foram expecificadas as desagragações acima
+> T-D2.8 - resolvida nas perguntar acima
+> T-D2.9 - executar como ja definido com 2 casas
+> T-D2.2 - resolvido acima
 ---
 
 ### C.5 — O sistema precisa de testes automatizados para a entrega Danida?
@@ -585,13 +592,13 @@ O Django oferece proteção CSRF nativa; configurá-la corretamente é questão 
 **Perguntas:**
 
 1. A proteção CSRF deve ser corrigida para a entrega Danida?
-   - ☐ Sim, corrigir todas as views na Onda D2
+   - x Sim, corrigir todas as views na Onda D2
    - ☐ Sim, mas apenas as views que afetam os tipos Danida (pessoas, organizacoes, area, fundos, planos)
    - ☐ Não, postergar para o backlog
 
 2. Qual o ambiente de produção?
    - ☐ Acesso restrito (rede interna / VPN) — risco menor
-   - ☐ Internet pública — risco maior
+   - x Internet pública — risco maior
    - ☐ Ambos
 
 **Premissa padrão (se não responder):** Corrigir CSRF nas views dos tipos Danida na Onda D2. Demais views no backlog.
@@ -611,7 +618,7 @@ O Django oferece proteção CSRF nativa; configurá-la corretamente é questão 
 **Perguntas:**
 
 1. A validação server-side de consistência entre projeto e equipe deve ser implementada?
-   - ☐ Sim, na Onda D2
+   - x Sim, na Onda D2
    - ☐ Não, postergar para o backlog
    - ☐ Não, o risco é aceitável para o ambiente atual
 
@@ -632,7 +639,7 @@ O Django oferece proteção CSRF nativa; configurá-la corretamente é questão 
 **Perguntas:**
 
 1. A validação server-side de consistência entre componente e atividade deve ser implementada?
-   - ☐ Sim, na Onda D2
+   - x Sim, na Onda D2
    - ☐ Não, postergar para o backlog
    - ☐ Não, o risco é aceitável para o ambiente atual
 
@@ -669,7 +676,7 @@ O Django oferece proteção CSRF nativa; configurá-la corretamente é questão 
 **Perguntas:**
 
 1. O mapeamento sugerido acima está correto? Se não, qual o mapeamento desejado?
-   - ☐ Mapeamento sugerido está correto
+   - x Mapeamento sugerido está correto
    - ☐ Mapeamento diferente (descrever abaixo)
 
 **Resposta do Cliente:**
@@ -698,7 +705,7 @@ O Django oferece proteção CSRF nativa; configurá-la corretamente é questão 
 
 **Resposta do Cliente:**
 
-> 
+> epassarojr é o ponto focal da instituição que participa ativamente do desenvolvimento
 
 ---
 
@@ -711,7 +718,7 @@ O Django oferece proteção CSRF nativa; configurá-la corretamente é questão 
 **Perguntas:**
 
 1. O ambiente Docker local está atualmente funcional?
-   - ☐ Sim, testado e funcionando
+   - x Sim, testado e funcionando
    - ☐ Não testado recentemente
    - ☐ Não, precisa de manutenção
 
@@ -722,7 +729,7 @@ O Django oferece proteção CSRF nativa; configurá-la corretamente é questão 
 
 **Resposta do Cliente:**
 
-> 
+> o docker esta funcional, mas registrar no backlog que precisa atualizar conforme o repositorio oficial do geonode
 
 ---
 
@@ -736,11 +743,11 @@ O Django oferece proteção CSRF nativa; configurá-la corretamente é questão 
 
 1. Os operadores que lançarão dados no sistema já conhecem a ferramenta?
    - ☐ Sim, já usam o sistema atualmente
-   - ☐ Não, precisam de capacitação
+   - x Não, precisam de capacitação
    - ☐ Parcialmente (alguns conhecem, outros não)
 
 2. Se precisarem de capacitação, ela está coberta por qual produto contratual?
-   - ☐ P3 (Oficinas Participativas)
+   - x P3 (Oficinas Participativas)
    - ☐ P8 (Customização e Acesso)
    - ☐ Precisa ser adicionada ao escopo
    - ☐ Não está no escopo; operadores aprenderão com documentação
