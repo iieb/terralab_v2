@@ -193,7 +193,7 @@ class IndicadorFinanciadorAdmin(admin.ModelAdmin):
     list_filter = ('tipo', 'financiador')
     search_fields = ('nome', 'codigo')
     fieldsets = (
-        (None, {'fields': ('financiador', 'nome', 'codigo', 'tipo', 'descricao', 'reporte')}),
+        (None, {'fields': ('financiador', 'nome', 'codigo', 'tipo', 'descricao', 'reporte', 'equivalente_ieb')}),
         ('Desagregações — Pessoas', {
             'fields': (
                 'desag_homens', 'desag_mulheres', 'desag_jovens',

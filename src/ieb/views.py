@@ -13,7 +13,7 @@ from .models import (
     Programa, Projeto, Componente, Atividade, EquipeProjeto,
     Indicador, IndicadorFinanciador, Meta, MetaFinanciador,
     AtividadeRegistro, AtividadeRegistroFoto, AtividadeRegistroListaPresenca,
-    Pessoas, Organizacoes, Area, AreasProtegidas, Evento, Rede, PequenoProjeto, Fundo, Outro,
+    Pessoas, Organizacoes, Area, AreasProtegidas, Evento, Rede, PequenoProjeto, Fundo,
     Leis, Planos, Parceria, Parcerias, Plano, PlanoHistorico,
     TIs, UC, PA, TUC,
     Produtos, Produto, Contrato, Contratos,
@@ -145,7 +145,6 @@ def atividade_registro_detalhe_view(request, pk):
         'redes': Rede.objects.filter(atividade_registro=atividade_registro),
         'pequenos_projetos': PequenoProjeto.objects.filter(atividade_registro=atividade_registro),
         'fundos': Fundo.objects.filter(atividade_registro=atividade_registro),
-        'outro': Outro.objects.filter(atividade_registro=atividade_registro),
         'parcerias': Parcerias.objects.filter(atividade_registro=atividade_registro).first(),
         'planos': Planos.objects.filter(atividade_registro=atividade_registro).select_related('plano'),
         'produtos': Produtos.objects.filter(atividade_registro=atividade_registro).first(),
@@ -206,7 +205,7 @@ def atualizar_situacao_plano(request):
                 plano=plano,
                 situacao_anterior=plano.situacao,
                 situacao_nova=nova_situacao,
-                usuario=request.user.username  # Se estiver usando autenticação de usuário
+                usuario=request.user  # Se estiver usando autenticação de usuário
             )
 
             # Atualizar a situação atual do plano
@@ -320,7 +319,7 @@ def atualizar_situacao_lei(request):
                 lei=lei,
                 situacao_anterior=situacao_anterior,
                 situacao_nova=nova_situacao,
-                usuario=request.user.username  # Ajuste conforme necessário
+                usuario=request.user  # Ajuste conforme necessário
             )
 
             return JsonResponse({"success": True})
@@ -496,7 +495,6 @@ def _atividade_registro_process(request, template='atividade_registro_form.html'
                 redes_map            = {}  # {id: {nome, tipo, quantidade}}
                 pequenos_projetos_map = {} # {id: {quantidade, tipo, tema, valor_total}}
                 fundos_map           = {}  # {id: {quantidade, valor_total, tipo}}
-                outro_map            = {}  # {id: {descricao, valor}}
                 planos_map           = {}  # {id: {situacao_nova, plano_id}}
                 parcerias_map        = {}  # {id: {parcerias: [ids]}}
                 produtos_map         = {}  # {id: {produtos: [ids]}}
@@ -515,7 +513,6 @@ def _atividade_registro_process(request, template='atividade_registro_form.html'
                 fin_redes_map            = {}
                 fin_pequenos_projetos_map = {}
                 fin_fundos_map           = {}
-                fin_outro_map            = {}
                 fin_parcerias_map        = {}
                 fin_produtos_map         = {}
                 fin_contratos_map        = {}
@@ -630,12 +627,6 @@ def _atividade_registro_process(request, template='atividade_registro_form.html'
                         elif field_name == 'valor_total': d['valor_total'] = _float(value)
                         elif field_name == 'tipo': d['tipo'] = value
 
-                    elif tipo == 'outro':
-                        _m = fin_outro_map if is_fin else outro_map
-                        d = _m.setdefault(_id, {})
-                        if field_name == 'descricao': d['descricao'] = value
-                        elif field_name == 'valor': d['valor'] = _float(value)
-
                     elif tipo == 'planos' and not is_fin:
                         d = planos_map.setdefault(_id, {})
                         if field_name == 'situacao_nova': d['situacao_nova'] = value
@@ -725,22 +716,18 @@ def _atividade_registro_process(request, template='atividade_registro_form.html'
                     if data.get('quantidade'):
                         Fundo.objects.create(atividade_registro=atividade_registro, indicador=ind, **data)
 
-                for ind_id, data in outro_map.items():
-                    ind = indicadores_por_id.get(ind_id)
-                    if data.get('descricao') or data.get('valor'):
-                        Outro.objects.create(atividade_registro=atividade_registro, indicador=ind, **data)
-
                 for ind_id, data in planos_map.items():
                     ind = indicadores_por_id.get(ind_id)
                     plano_id = data.get('plano_id')
                     plano = Plano.objects.filter(pk=plano_id).first() if plano_id else None
                     if data.get('situacao_nova') and plano:
-                        Planos.objects.create(
+                        plano_registro = Planos(
                             atividade_registro=atividade_registro,
                             indicador=ind,
                             plano=plano,
                             situacao_nova=data['situacao_nova']
                         )
+                        plano_registro.save(usuario=request.user)
 
                 for ind_id, data in parcerias_map.items():
                     ind = indicadores_por_id.get(ind_id)
@@ -817,11 +804,6 @@ def _atividade_registro_process(request, template='atividade_registro_form.html'
                     ind_fin = indicadores_fin_por_id.get(fin_id)
                     if data.get('quantidade'):
                         Fundo.objects.create(atividade_registro=atividade_registro, indicador_financiador=ind_fin, **data)
-
-                for fin_id, data in fin_outro_map.items():
-                    ind_fin = indicadores_fin_por_id.get(fin_id)
-                    if data.get('descricao') or data.get('valor'):
-                        Outro.objects.create(atividade_registro=atividade_registro, indicador_financiador=ind_fin, **data)
 
                 for fin_id, data in fin_parcerias_map.items():
                     ind_fin = indicadores_fin_por_id.get(fin_id)
@@ -988,10 +970,6 @@ def _atividade_registro_process(request, template='atividade_registro_form.html'
                 {"value": "Indivíduo de alta renda/Investidor anjo", "label": "Indivíduo de alta renda/Investidor anjo"},
                 {"value": "OUTRO (especifique)", "label": "OUTRO (especifique)"},
             ]},
-        ],
-        "outro": [
-            {"name": "descricao", "type": "text", "label": "Descrição"},
-            {"name": "valor", "type": "number", "label": "Valor (R$)", "step": "0.01"},
         ],
     }
 

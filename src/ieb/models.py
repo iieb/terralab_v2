@@ -1,4 +1,5 @@
 from django.db import models
+from django.conf import settings
 from django.core.exceptions import ValidationError
 
 # Create your models here.
@@ -354,7 +355,6 @@ INDICADOR_TIPO_CHOICES = [
     ('pequenos_projetos', 'Pequenos Projetos'),
     ('fundos',            'Fundos'),
     ('leis_politicas',    'Leis e Políticas'),
-    ('outro',             'Outro'),
 ]
 
 SCORE_PLANO = {
@@ -373,7 +373,7 @@ class Indicador(models.Model):
     codigo = models.CharField(max_length=255)
     descricao = models.CharField(max_length=255)
     reporte = models.CharField(max_length=255)
-    tipo = models.CharField(max_length=30, choices=INDICADOR_TIPO_CHOICES, default='outro')
+    tipo = models.CharField(max_length=30, choices=INDICADOR_TIPO_CHOICES, default='pessoas')
 
     # Desagregações — Pessoas
     desag_homens            = models.BooleanField(default=False, verbose_name='Homens')
@@ -424,7 +424,15 @@ class IndicadorFinanciador(models.Model):
     codigo    = models.CharField(max_length=255, blank=True)
     descricao = models.CharField(max_length=255, blank=True)
     reporte   = models.CharField(max_length=255, blank=True)
-    tipo      = models.CharField(max_length=30, choices=INDICADOR_TIPO_CHOICES, default='outro')
+    tipo      = models.CharField(max_length=30, choices=INDICADOR_TIPO_CHOICES, default='pessoas')
+    equivalente_ieb = models.ForeignKey(
+        'Indicador', on_delete=models.SET_NULL, null=True, blank=True,
+        verbose_name='Indicador IEB equivalente',
+        help_text=(
+            'Quando preenchido, os resultados deste indicador de financiador '
+            'sao contabilizados tambem no indicador IEB equivalente.'
+        ),
+    )
 
     # Desagregações — Pessoas
     desag_homens            = models.BooleanField(default=False, verbose_name='Homens')
@@ -501,19 +509,19 @@ class Meta(models.Model):
             'parcerias':         (Parcerias,       'total_parcerias'),
             'mobilizados':       (Mobilizados,     'valor_mobilizado'),
             'produtos':          (Produtos,        'total_produtos'),
-            'outro':             (Outro,           'valor'),
         }
         COUNT_MAP = {
             'contratos': Contratos,
         }
+        valor_direto = 0
         if tipo in SUM_MAP:
             Model, field = SUM_MAP[tipo]
             result = Model.objects.filter(
                 atividade_registro__in=registros, indicador=self.indicador
             ).aggregate(total=Sum(field))
-            return result['total'] or 0
+            valor_direto = result['total'] or 0
         elif tipo in COUNT_MAP:
-            return COUNT_MAP[tipo].objects.filter(
+            valor_direto = COUNT_MAP[tipo].objects.filter(
                 atividade_registro__in=registros, indicador=self.indicador
             ).count()
         elif tipo == 'planos':
@@ -521,10 +529,25 @@ class Meta(models.Model):
                 atividade_registro__atividade=self.atividade,
                 indicador=self.indicador
             ).select_related('plano').order_by('-pk').first()
-            if not ultimo or not ultimo.plano:
-                return 0
-            return SCORE_PLANO.get(ultimo.plano.situacao, 0)
-        return 0
+            valor_direto = SCORE_PLANO.get(ultimo.plano.situacao, 0) if ultimo and ultimo.plano else 0
+
+        valor_financiadores = 0
+        for fin in IndicadorFinanciador.objects.filter(equivalente_ieb=self.indicador):
+            fin_tipo = fin.tipo
+            if fin_tipo in SUM_MAP:
+                Model, field = SUM_MAP[fin_tipo]
+                result = Model.objects.filter(
+                    atividade_registro__in=registros,
+                    indicador_financiador=fin,
+                ).aggregate(total=Sum(field))
+                valor_financiadores += result['total'] or 0
+            elif fin_tipo in COUNT_MAP:
+                valor_financiadores += COUNT_MAP[fin_tipo].objects.filter(
+                    atividade_registro__in=registros,
+                    indicador_financiador=fin,
+                ).count()
+
+        return valor_direto + valor_financiadores
 
     @property
     def percentual(self):
@@ -570,7 +593,6 @@ class MetaFinanciador(models.Model):
             'parcerias':         (Parcerias,       'total_parcerias'),
             'mobilizados':       (Mobilizados,     'valor_mobilizado'),
             'produtos':          (Produtos,        'total_produtos'),
-            'outro':             (Outro,           'valor'),
         }
         COUNT_MAP = {
             'contratos': Contratos,
@@ -872,7 +894,10 @@ class LeiHistorico(models.Model):
     situacao_anterior = models.CharField(max_length=255, choices=Lei.SITUACAO_CHOICES)
     situacao_nova = models.CharField(max_length=255, choices=Lei.SITUACAO_CHOICES)
     data_alteracao = models.DateTimeField(auto_now_add=True)
-    usuario = models.CharField(max_length=255)  # Ou usar um ForeignKey para o modelo de usuário
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, blank=True, verbose_name='Usuario',
+    )
 
     def __str__(self):
         return f"{self.lei.nome} - Alteração de {self.situacao_anterior} para {self.situacao_nova} em {self.data_alteracao}"
@@ -966,12 +991,17 @@ class PequenoProjeto(models.Model):
     quantidade  = models.PositiveIntegerField(default=0)
     tipo        = models.CharField(max_length=100, blank=True)
     tema        = models.CharField(max_length=100, blank=True)
-    valor_total = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
+    valor_total = models.DecimalField(max_digits=15, decimal_places=2, default=0)
 
     class Meta:
         verbose_name = 'Pequeno Projeto'
         verbose_name_plural = 'Pequenos Projetos'
-        constraints = _satellite_constraints('pequenoprojeto')
+        constraints = _satellite_constraints('pequenoprojeto') + [
+            models.CheckConstraint(
+                check=models.Q(quantidade__gte=1),
+                name='pequenoprojeto_quantidade_min_1',
+            ),
+        ]
 
     def __str__(self):
         return f"{self.atividade_registro} — {self.quantidade} pequenos projetos"
@@ -990,29 +1020,19 @@ class Fundo(models.Model):
     indicador             = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(class)s_set')
     indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(class)s_fin_set')
     quantidade  = models.PositiveIntegerField(default=0)
-    valor_total = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
+    valor_total = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     tipo        = models.CharField(max_length=50, choices=FUNDO_TIPO_CHOICES, blank=True)
 
     class Meta:
-        constraints = _satellite_constraints('fundo')
+        constraints = _satellite_constraints('fundo') + [
+            models.CheckConstraint(
+                check=models.Q(quantidade__gte=1),
+                name='fundo_quantidade_min_1',
+            ),
+        ]
 
     def __str__(self):
         return f"{self.atividade_registro} — {self.quantidade} fundos"
-
-
-# OUTRO
-class Outro(models.Model):
-    atividade_registro    = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE)
-    indicador             = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(class)s_set')
-    indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(class)s_fin_set')
-    descricao = models.TextField(blank=True)
-    valor     = models.FloatField(null=True, blank=True)
-
-    class Meta:
-        constraints = _satellite_constraints('outro')
-
-    def __str__(self):
-        return f"{self.atividade_registro} — outro"
 
 
 # PLANOS
@@ -1064,7 +1084,7 @@ class Planos(models.Model):
     class Meta:
         constraints = _satellite_constraints('planos')
 
-    def save(self, *args, **kwargs):
+    def save(self, *args, usuario=None, **kwargs):
         plano = self.plano
         if plano and not self.pk:  # apenas na criação
             self.situacao_anterior = plano.situacao
@@ -1073,7 +1093,7 @@ class Planos(models.Model):
                     plano=plano,
                     situacao_anterior=plano.situacao,
                     situacao_nova=self.situacao_nova,
-                    usuario=str(self.atividade_registro.equipe_projeto.equipe.nome)
+                    usuario=usuario,
                 )
                 plano.situacao = self.situacao_nova
                 plano.save(update_fields=['situacao'])
@@ -1089,7 +1109,10 @@ class PlanoHistorico(models.Model):
     situacao_anterior = models.CharField(max_length=255, choices=Plano.SITUACAO_CHOICES)
     situacao_nova = models.CharField(max_length=255, choices=Plano.SITUACAO_CHOICES)
     data_alteracao = models.DateTimeField(auto_now_add=True)
-    usuario = models.CharField(max_length=255)  # Ou usar um ForeignKey para um modelo de usuário, se necessário
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, blank=True, verbose_name='Usuario',
+    )
 
     def __str__(self):
         return f"{self.plano.nome} - Alteração de {self.situacao_anterior} para {self.situacao_nova} em {self.data_alteracao}"
@@ -1252,6 +1275,7 @@ class Modelo(models.Model):
 class AtividadeRegistroModelo(models.Model):
     atividade_registro = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE)
     indicador = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(class)s_set')
+    indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(class)s_fin_set')
     modelo = models.ForeignKey(Modelo, on_delete=models.CASCADE)
     status = models.CharField(
         max_length=50,
@@ -1266,6 +1290,7 @@ class AtividadeRegistroModelo(models.Model):
     class Meta:
         verbose_name = 'Atividade Registro Modelo'
         verbose_name_plural = 'Atividades Registro Modelos'
+        constraints = _satellite_constraints('atividaderegistromodelo')
 
     def __str__(self):
         return f"{self.atividade_registro} - {self.modelo} - {self.status}"
