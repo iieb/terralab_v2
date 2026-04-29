@@ -125,7 +125,7 @@ class ProjetoAdmin(admin.ModelAdmin):
 @admin.register(Atividade)
 class AtividadeAdmin(admin.ModelAdmin):
     inlines = [SubatividadeInline, MetaInline, MetaFinanciadorInline, AtividadeAreaTematicaInline, AtividadeOILocalInline, AtividadeOIRegionalInline, AtividadeTIInline]
-
+    list_display = ('nome', 'codigo', 'descricao')
 
 @admin.register(Subatividade)
 class SubatividadeAdmin(admin.ModelAdmin):
