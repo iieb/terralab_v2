@@ -308,7 +308,7 @@
             background: #101828;
             border-radius: 999px;
             transform-origin: 50% 100%;
-            transform: translateX(-50%) rotate(calc(-90deg + (var(--gauge-value) * 1.8deg)));
+            transform: translateX(-50%) rotate(-90deg);
             z-index: 2;
         }
         .gauge-center {
@@ -599,8 +599,8 @@
                     {% for item in grafico_metas_por_tipo %}
                     <div class="gauge-card">
                         <div class="gauge-title">{{ item.tipo }}</div>
-                        <div class="gauge" style="--gauge-value: {{ item.gauge_percentual }};">
-                            <div class="gauge-needle"></div>
+                        <div class="gauge">
+                            <div class="gauge-needle" style="transform: translateX(-50%) rotate({{ item.gauge_rotation_css }});"></div>
                             <div class="gauge-center"></div>
                         </div>
                         <div class="gauge-value">{{ item.percentual }}%</div>
@@ -712,7 +712,7 @@
                 <div class="chart-row">
                     <span class="chart-label">{{ item.tipo }}</span>
                     <div class="bar-track">
-                        <div class="bar-fill {% if item.percentual >= 100 %}success{% elif item.percentual >= 70 %}warning{% endif %}" style="width: {{ item.barra_percentual }}%;"></div>
+                        <div class="bar-fill {% if item.percentual >= 100 %}success{% elif item.percentual >= 70 %}warning{% endif %}" style="width: {{ item.barra_percentual_css }}%;"></div>
                     </div>
                     <span class="chart-value">{{ item.percentual }}%</span>
                 </div>

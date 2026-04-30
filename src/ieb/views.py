@@ -1200,14 +1200,17 @@ def dash_danida_view(request):
         }
         for item in registros_por_projeto
     ]
-    grafico_metas_por_tipo = [
-        {
+    grafico_metas_por_tipo = []
+    for item in metas_por_tipo:
+        gauge_percentual = min(item['percentual'], 100)
+        gauge_rotation = -90 + (gauge_percentual * 1.8)
+        grafico_metas_por_tipo.append({
             **item,
-            'barra_percentual': min(item['percentual'], 100),
-            'gauge_percentual': min(item['percentual'], 100),
-        }
-        for item in metas_por_tipo
-    ]
+            'barra_percentual': gauge_percentual,
+            'barra_percentual_css': f'{gauge_percentual:.1f}'.replace(',', '.'),
+            'gauge_percentual': gauge_percentual,
+            'gauge_rotation_css': f'{gauge_rotation:.1f}deg'.replace(',', '.'),
+        })
     registros_por_mes_qs = list(
         registros_qs.annotate(mes=TruncMonth('data_inicio'))
         .values('mes')
