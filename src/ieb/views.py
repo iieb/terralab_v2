@@ -41,6 +41,7 @@ def normalize_string(s):
     s = re.sub(r'\s+', '_', s.lower())
     return s
 
+@login_required
 def atividade_registro_view(request):
     return _atividade_registro_process(request, template='atividade_registro_form.html')
 
@@ -130,6 +131,7 @@ def load_indicadores(request):
     ]
     return JsonResponse(data, safe=False)
 
+@login_required
 def atividade_registro_detalhe_view(request, pk):
     atividade_registro = get_object_or_404(AtividadeRegistro, pk=pk)
 
@@ -158,6 +160,7 @@ def teste_parcerias_view(request):
     parcerias = Parceria.objects.all()
     return render(request, 'teste_parcerias.html', {'parcerias': parcerias})
 
+@login_required
 def adicionar_parceria(request):
     if request.method == "POST":
         try:
@@ -174,6 +177,7 @@ def adicionar_parceria(request):
             return JsonResponse({"error": "Nome e tipo não fornecidos"}, status=400)
     return JsonResponse({"error": "Método não permitido"}, status=405)
 
+@login_required
 def adicionar_plano(request):
     if request.method == "POST":
         try:
@@ -217,6 +221,7 @@ def atualizar_situacao_plano(request):
             return JsonResponse({"success": False, "error": str(e)})
         
 
+@login_required
 def adicionar_produto(request):
     if request.method == "POST":
         try:
@@ -232,6 +237,7 @@ def adicionar_produto(request):
             return JsonResponse({"error": "Nome não fornecido"}, status=400)
     return JsonResponse({"error": "Método não permitido"}, status=405)
 
+@login_required
 def adicionar_contrato(request):
     if request.method == "POST":
         try:
@@ -275,6 +281,7 @@ def atualizar_estado_contrato(request):
             return JsonResponse({"success": False, "error": str(e)})
     return JsonResponse({"error": "Método não permitido"}, status=405)
 
+@login_required
 @csrf_exempt
 def adicionar_lei(request):
     if request.method == "POST":
@@ -299,6 +306,7 @@ def adicionar_lei(request):
             return JsonResponse({"error": "Dados incompletos"}, status=400)
     return JsonResponse({"error": "Método não permitido"}, status=405)
 
+@login_required
 @csrf_exempt
 def atualizar_situacao_lei(request):
     if request.method == "POST":
@@ -327,6 +335,7 @@ def atualizar_situacao_lei(request):
             return JsonResponse({"success": False, "error": str(e)})
     return JsonResponse({"error": "Método não permitido"}, status=405)
 
+@login_required
 @csrf_exempt
 def adicionar_modelo(request):
     if request.method == "POST":
@@ -392,6 +401,7 @@ def enviar_email_notificacao(atividade_registro_id, email_organizacao):
         'area': Area.objects.filter(atividade_registro=atividade_registro),
         'areas_protegidas': AreasProtegidas.objects.filter(atividade_registro=atividade_registro),
         'eventos': Evento.objects.filter(atividade_registro=atividade_registro),
+        'fundos': Fundo.objects.filter(atividade_registro=atividade_registro),
         'parcerias': Parcerias.objects.filter(atividade_registro=atividade_registro).first(),
         'planos': Planos.objects.filter(atividade_registro=atividade_registro).select_related('plano'),
         'produtos': Produtos.objects.filter(atividade_registro=atividade_registro).first(),
@@ -468,6 +478,7 @@ def enviar_email_notificacao(atividade_registro_id, email_organizacao):
     # Enviar o e-mail
     email.send()
 
+@login_required
 def atividade_registro_view_v2(request):
     """Versão v2 do formulário de registro — mesmo processamento, novo template."""
     return _atividade_registro_process(request, template='atividade_registro_form_v2.html')
@@ -727,7 +738,7 @@ def _atividade_registro_process(request, template='atividade_registro_form.html'
                             plano=plano,
                             situacao_nova=data['situacao_nova']
                         )
-                        plano_registro.save(usuario=request.user)
+                        plano_registro.save()
 
                 for ind_id, data in parcerias_map.items():
                     ind = indicadores_por_id.get(ind_id)
@@ -870,9 +881,10 @@ def _atividade_registro_process(request, template='atividade_registro_form.html'
     modelos_existentes = Modelo.objects.all()
 
     _foco_options = [
-        {"value": "implementacao", "label": "Implementação melhorada/monitoramento/vigilância"},
-        {"value": "ativ_prod", "label": "Meios de subsistência/cadeia de valor sustentáveis melhorados"},
-        {"value": "governanca", "label": "Fortalecimento institucional/capacitação organizacional/governança"},
+        {"value": "soc_civil",           "label": "Fortalecimento da sociedade civil"},
+        {"value": "gov_territorial",     "label": "Governança Territorial e Ambiental"},
+        {"value": "defesa_direitos",     "label": "Defesa de Direitos"},
+        {"value": "sociobiodiversidade", "label": "Economias da Sociobiodiversidade"},
     ]
 
     indicadores_config = {
@@ -990,6 +1002,7 @@ def apresentacao_moore(request):
 # DASHBOARD DE MONITORAMENTO
 # ---------------------------------------------------------------------------
 
+@login_required
 def monitoramento_registros_view(request):
     """Listagem de AtividadeRegistro com filtros por programa, projeto, atividade e data."""
     qs = AtividadeRegistro.objects.select_related(
@@ -1026,6 +1039,7 @@ def monitoramento_registros_view(request):
     return render(request, 'monitoramento_registros.html', context)
 
 
+@login_required
 def monitoramento_metas_view(request):
     """Metas por projeto com realizado e percentual de cumprimento."""
     projeto_id = request.GET.get('projeto')

@@ -26,16 +26,15 @@
         </div>
         <h1>{{ atividade_registro.atividade.nome }}</h1>
         <div class="meta-chips">
-            <span class="chip chip-date">&#128197; {{ atividade_registro.data_inicio|date:"d/m/Y" }} → {{ atividade_registro.data_final|date:"d/m/Y" }}</span>
-            <span class="chip chip-team">&#128101; {{ atividade_registro.equipe_projeto.equipe.nome }}</span>
-            <span class="chip chip-place">&#128205; {{ atividade_registro.local }}</span>
+            <span class="chip chip-date">{{ atividade_registro.data_inicio|date:"d/m/Y" }} &ndash; {{ atividade_registro.data_final|date:"d/m/Y" }}</span>
+            <span class="chip chip-team">{{ atividade_registro.equipe_projeto.equipe.nome }}</span>
+            <span class="chip chip-place">{{ atividade_registro.local }}</span>
         </div>
     </header>
 
     <!-- ── DESCRIÇÃO ─────────────────────────────────────────────── -->
     <section class="card">
         <div class="card-header">
-            <span class="card-icon">&#128221;</span>
             <h2>Descrição</h2>
         </div>
         <div class="card-body">
@@ -47,7 +46,6 @@
     {% if fotos %}
     <section class="card">
         <div class="card-header">
-            <span class="card-icon">&#128247;</span>
             <h2>Fotos <span class="count-badge">{{ fotos|length }}</span></h2>
         </div>
         <div class="card-body">
@@ -70,7 +68,6 @@
     {% if listas_presenca %}
     <section class="card">
         <div class="card-header">
-            <span class="card-icon">&#128203;</span>
             <h2>Listas de Presença <span class="count-badge">{{ listas_presenca|length }}</span></h2>
         </div>
         <div class="card-body">
@@ -78,7 +75,7 @@
                 {% for lista in listas_presenca %}
                 <li>
                     <a href="{{ lista.arquivo.url }}" target="_blank" class="file-link">
-                        <span class="file-icon-sm">&#128196;</span>
+                        <span class="file-icon-sm">&#8627;</span>
                         {{ lista.arquivo.name|slice:"16:" }}
                     </a>
                 </li>
@@ -92,7 +89,6 @@
     {% if atividade_registro.desafios or atividade_registro.propostas or atividade_registro.sucesso or atividade_registro.melhores_praticas or atividade_registro.comentarios %}
     <section class="card">
         <div class="card-header">
-            <span class="card-icon">&#128172;</span>
             <h2>Narrativa</h2>
         </div>
         <div class="card-body narrative-grid">
@@ -134,7 +130,6 @@
     {% if atividade_registro.equipe_adicional.exists %}
     <section class="card">
         <div class="card-header">
-            <span class="card-icon">&#128100;</span>
             <h2>Equipe Adicional</h2>
         </div>
         <div class="card-body">
@@ -148,59 +143,77 @@
     {% endif %}
 
     <!-- ── INDICADORES ───────────────────────────────────────────── -->
-    {% if treinados or capacitados or parcerias or planos or area_geral or area_direto or area_restrito or produtos or contratos or leis or aplicacao or mobilizados or modelos %}
+    {% if pessoas or organizacoes or area or fundos or planos or parcerias or produtos or contratos or leis or mobilizados or modelos %}
     <section class="card">
         <div class="card-header">
-            <span class="card-icon">&#128200;</span>
             <h2>Indicadores Registrados</h2>
         </div>
         <div class="card-body indicators-grid">
 
-            {% if treinados %}
+            {% for p in pessoas %}
             <div class="indicator-card">
-                <div class="indicator-title">&#128104;&#8205;&#127979; Pessoas Treinadas</div>
+                <div class="indicator-title">{% if p.indicador %}{{ p.indicador.nome }}{% else %}Pessoas{% endif %}</div>
                 <div class="stat-row">
-                    <div class="stat"><span class="stat-value">{{ treinados.total_pessoas }}</span><span class="stat-label">Total</span></div>
-                    <div class="stat"><span class="stat-value">{{ treinados.homens }}</span><span class="stat-label">Homens</span></div>
-                    <div class="stat"><span class="stat-value">{{ treinados.mulheres }}</span><span class="stat-label">Mulheres</span></div>
-                    <div class="stat"><span class="stat-value">{{ treinados.jovens }}</span><span class="stat-label">Jovens</span></div>
+                    <div class="stat"><span class="stat-value">{{ p.total_pessoas }}</span><span class="stat-label">Total</span></div>
+                    {% if p.homens != None %}<div class="stat"><span class="stat-value">{{ p.homens }}</span><span class="stat-label">Homens</span></div>{% endif %}
+                    {% if p.mulheres != None %}<div class="stat"><span class="stat-value">{{ p.mulheres }}</span><span class="stat-label">Mulheres</span></div>{% endif %}
+                    {% if p.jovens != None %}<div class="stat"><span class="stat-value">{{ p.jovens }}</span><span class="stat-label">Jovens</span></div>{% endif %}
+                    {% if p.pct_indigenas != None %}<div class="stat"><span class="stat-value">{{ p.pct_indigenas }}</span><span class="stat-label">Indígenas</span></div>{% endif %}
+                    {% if p.pct_extrativistas != None %}<div class="stat"><span class="stat-value">{{ p.pct_extrativistas }}</span><span class="stat-label">Extrativistas</span></div>{% endif %}
+                    {% if p.pct_quilombolas != None %}<div class="stat"><span class="stat-value">{{ p.pct_quilombolas }}</span><span class="stat-label">Quilombolas</span></div>{% endif %}
                 </div>
-                <div class="indicator-meta">Foco: {{ treinados.get_foco_treinamento_display }}</div>
+                {% if p.foco %}<div class="indicator-meta">Foco: {{ p.get_foco_display }}</div>{% endif %}
             </div>
-            {% endif %}
+            {% endfor %}
 
-            {% if capacitados %}
+            {% for o in organizacoes %}
             <div class="indicator-card">
-                <div class="indicator-title">&#127979; Capacitados</div>
+                <div class="indicator-title">{% if o.indicador %}{{ o.indicador.nome }}{% else %}Organizações{% endif %}</div>
                 <div class="stat-row">
-                    <div class="stat"><span class="stat-value">{{ capacitados.total_organizacoes }}</span><span class="stat-label">Organizações</span></div>
+                    <div class="stat"><span class="stat-value">{{ o.total_organizacoes }}</span><span class="stat-label">Total</span></div>
+                    {% if o.org_indigenas != None %}<div class="stat"><span class="stat-value">{{ o.org_indigenas }}</span><span class="stat-label">Indígenas</span></div>{% endif %}
+                    {% if o.org_sociedade_civil != None %}<div class="stat"><span class="stat-value">{{ o.org_sociedade_civil }}</span><span class="stat-label">Soc. Civil</span></div>{% endif %}
+                    {% if o.org_extrativistas != None %}<div class="stat"><span class="stat-value">{{ o.org_extrativistas }}</span><span class="stat-label">Extrativistas</span></div>{% endif %}
+                    {% if o.org_governo != None %}<div class="stat"><span class="stat-value">{{ o.org_governo }}</span><span class="stat-label">Governo</span></div>{% endif %}
                 </div>
-                <div class="indicator-meta">Foco: {{ capacitados.get_foco_capacitacao_display }}</div>
-                {% if capacitados.organizacoes.exists %}
-                <ul class="tag-list mt-8">
-                    {% for org in capacitados.organizacoes.all %}
-                    <li class="tag">{{ org.nome }}</li>
+                {% if o.foco %}<div class="indicator-meta">Foco: {{ o.get_foco_display }}</div>{% endif %}
+            </div>
+            {% endfor %}
+
+            {% for a in area %}
+            <div class="indicator-card">
+                <div class="indicator-title">{% if a.indicador %}{{ a.indicador.nome }}{% else %}Área{% endif %}</div>
+                <div class="stat-row">
+                    <div class="stat"><span class="stat-value">{{ a.total_ha|floatformat:2 }}</span><span class="stat-label">ha</span></div>
+                </div>
+            </div>
+            {% endfor %}
+
+            {% for f in fundos %}
+            <div class="indicator-card">
+                <div class="indicator-title">{% if f.indicador %}{{ f.indicador.nome }}{% else %}Fundo{% endif %}</div>
+                <div class="stat-row">
+                    <div class="stat"><span class="stat-value">{{ f.quantidade }}</span><span class="stat-label">Chamadas</span></div>
+                </div>
+            </div>
+            {% endfor %}
+
+            {% if planos %}
+            <div class="indicator-card">
+                <div class="indicator-title">Planos</div>
+                <ul class="item-list mt-8">
+                    {% for p in planos %}
+                    {% if p.plano %}
+                    <li><strong>{{ p.plano.nome }}</strong> ({{ p.plano.tipo }})</li>
+                    {% endif %}
                     {% endfor %}
                 </ul>
-                {% endif %}
-            </div>
-            {% endif %}
-
-            {% if aplicacao %}
-            <div class="indicator-card">
-                <div class="indicator-title">&#9989; Aplicação</div>
-                <div class="stat-row">
-                    <div class="stat"><span class="stat-value">{{ aplicacao.total_pessoas }}</span><span class="stat-label">Total</span></div>
-                    <div class="stat"><span class="stat-value">{{ aplicacao.homens }}</span><span class="stat-label">Homens</span></div>
-                    <div class="stat"><span class="stat-value">{{ aplicacao.mulheres }}</span><span class="stat-label">Mulheres</span></div>
-                    <div class="stat"><span class="stat-value">{{ aplicacao.jovens }}</span><span class="stat-label">Jovens</span></div>
-                </div>
             </div>
             {% endif %}
 
             {% if parcerias %}
             <div class="indicator-card">
-                <div class="indicator-title">&#129309; Parcerias</div>
+                <div class="indicator-title">Parcerias</div>
                 <div class="stat-row">
                     <div class="stat"><span class="stat-value">{{ parcerias.total_parcerias }}</span><span class="stat-label">Total</span></div>
                 </div>
@@ -214,53 +227,9 @@
             </div>
             {% endif %}
 
-            {% if planos %}
-            <div class="indicator-card">
-                <div class="indicator-title">&#128196; Planos</div>
-                <ul class="item-list mt-8">
-                    {% for p in planos %}
-                    {% if p.plano %}
-                    <li><strong>{{ p.plano.nome }}</strong> ({{ p.plano.tipo }})
-                        — {{ p.situacao_anterior }} → <em>{{ p.situacao_nova }}</em></li>
-                    {% endif %}
-                    {% endfor %}
-                </ul>
-            </div>
-            {% endif %}
-
-            {% if area_geral %}
-            <div class="indicator-card">
-                <div class="indicator-title">&#127758; Área de Influência Geral</div>
-                <div class="stat-row">
-                    <div class="stat"><span class="stat-value">{{ area_geral.total_tis }}</span><span class="stat-label">TIs</span></div>
-                    <div class="stat"><span class="stat-value">{{ area_geral.total_area|floatformat:0 }}</span><span class="stat-label">ha</span></div>
-                </div>
-            </div>
-            {% endif %}
-
-            {% if area_direto %}
-            <div class="indicator-card">
-                <div class="indicator-title">&#127759; Área de Influência Direta</div>
-                <div class="stat-row">
-                    <div class="stat"><span class="stat-value">{{ area_direto.total_tis }}</span><span class="stat-label">TIs</span></div>
-                    <div class="stat"><span class="stat-value">{{ area_direto.total_area|floatformat:0 }}</span><span class="stat-label">ha</span></div>
-                </div>
-            </div>
-            {% endif %}
-
-            {% if area_restrito %}
-            <div class="indicator-card">
-                <div class="indicator-title">&#128683; Área Restrita</div>
-                <div class="stat-row">
-                    <div class="stat"><span class="stat-value">{{ area_restrito.area_em_ha|floatformat:0 }}</span><span class="stat-label">ha</span></div>
-                </div>
-                <div class="indicator-meta">TI: {{ area_restrito.ti.nome }}</div>
-            </div>
-            {% endif %}
-
             {% if produtos %}
             <div class="indicator-card">
-                <div class="indicator-title">&#128230; Produtos</div>
+                <div class="indicator-title">Produtos</div>
                 <div class="stat-row">
                     <div class="stat"><span class="stat-value">{{ produtos.total_produtos }}</span><span class="stat-label">Total</span></div>
                 </div>
@@ -276,7 +245,7 @@
 
             {% if contratos %}
             <div class="indicator-card">
-                <div class="indicator-title">&#128221; Contratos</div>
+                <div class="indicator-title">Contratos</div>
                 {% if contratos.contratos.exists %}
                 <ul class="item-list">
                     {% for c in contratos.contratos.all %}
@@ -289,7 +258,7 @@
 
             {% if leis %}
             <div class="indicator-card">
-                <div class="indicator-title">&#9878; Leis e Políticas</div>
+                <div class="indicator-title">Leis e Políticas</div>
                 {% if leis.leis.exists %}
                 <ul class="item-list">
                     {% for lei in leis.leis.all %}
@@ -302,7 +271,7 @@
 
             {% if mobilizados %}
             <div class="indicator-card">
-                <div class="indicator-title">&#128176; Recursos Mobilizados</div>
+                <div class="indicator-title">Recursos Mobilizados</div>
                 <div class="stat-row">
                     <div class="stat"><span class="stat-value">R$ {{ mobilizados.valor_mobilizado|floatformat:2 }}</span><span class="stat-label">Valor</span></div>
                 </div>
@@ -312,7 +281,7 @@
 
             {% if modelos %}
             <div class="indicator-card">
-                <div class="indicator-title">&#128269; Modelos Aplicados</div>
+                <div class="indicator-title">Modelos Aplicados</div>
                 <ul class="item-list">
                     {% for m in modelos %}
                     <li>{{ m.modelo.nome }} — <em>{{ m.status }}</em></li>

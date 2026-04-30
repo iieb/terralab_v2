@@ -276,42 +276,46 @@
 {% endif %}
 
 <!-- ── INDICADORES ───────────────────────────────────────────── -->
-{% if treinados or capacitados or aplicacao or parcerias or planos or area_geral or area_direto or area_restrito or produtos or contratos or leis or mobilizados or modelos %}
+{% if pessoas or organizacoes or area or fundos or planos or parcerias or produtos or contratos or leis or mobilizados or modelos %}
 <div class="section">
     <div class="section-title">Indicadores Registrados</div>
     <div class="section-body">
 
-        {% if treinados %}
-        <p style="font-weight:bold;color:#8c4a10;margin:6px 0 2px;">Pessoas Treinadas</p>
+        {% for p in pessoas %}
+        <p style="font-weight:bold;color:#8c4a10;margin:6px 0 2px;">{% if p.indicador %}{{ p.indicador.nome }}{% else %}Pessoas{% endif %}</p>
         <table class="stats-table"><tr>
-            <td><span class="stat-num">{{ treinados.total_pessoas }}</span><span class="stat-lbl">Total</span></td>
-            <td><span class="stat-num">{{ treinados.homens }}</span><span class="stat-lbl">Homens</span></td>
-            <td><span class="stat-num">{{ treinados.mulheres }}</span><span class="stat-lbl">Mulheres</span></td>
-            <td><span class="stat-num">{{ treinados.jovens }}</span><span class="stat-lbl">Jovens</span></td>
+            <td><span class="stat-num">{{ p.total_pessoas }}</span><span class="stat-lbl">Total</span></td>
+            {% if p.homens != None %}<td><span class="stat-num">{{ p.homens }}</span><span class="stat-lbl">Homens</span></td>{% endif %}
+            {% if p.mulheres != None %}<td><span class="stat-num">{{ p.mulheres }}</span><span class="stat-lbl">Mulheres</span></td>{% endif %}
+            {% if p.jovens != None %}<td><span class="stat-num">{{ p.jovens }}</span><span class="stat-lbl">Jovens</span></td>{% endif %}
+            {% if p.pct_indigenas != None %}<td><span class="stat-num">{{ p.pct_indigenas }}</span><span class="stat-lbl">Indígenas</span></td>{% endif %}
         </tr></table>
-        <table class="ind-table"><tr><td class="ind-label">Foco:</td><td>{{ treinados.get_foco_treinamento_display }}</td></tr></table>
-        {% endif %}
+        {% if p.foco %}<table class="ind-table"><tr><td class="ind-label">Foco:</td><td>{{ p.get_foco_display }}</td></tr></table>{% endif %}
+        {% endfor %}
 
-        {% if capacitados %}
-        <p style="font-weight:bold;color:#8c4a10;margin:6px 0 2px;">Capacitados</p>
+        {% for o in organizacoes %}
+        <p style="font-weight:bold;color:#8c4a10;margin:6px 0 2px;">{% if o.indicador %}{{ o.indicador.nome }}{% else %}Organizações{% endif %}</p>
         <table class="stats-table"><tr>
-            <td><span class="stat-num">{{ capacitados.total_organizacoes }}</span><span class="stat-lbl">Organizações</span></td>
+            <td><span class="stat-num">{{ o.total_organizacoes }}</span><span class="stat-lbl">Total</span></td>
+            {% if o.org_indigenas != None %}<td><span class="stat-num">{{ o.org_indigenas }}</span><span class="stat-lbl">Indígenas</span></td>{% endif %}
+            {% if o.org_sociedade_civil != None %}<td><span class="stat-num">{{ o.org_sociedade_civil }}</span><span class="stat-lbl">Soc. Civil</span></td>{% endif %}
         </tr></table>
-        <table class="ind-table"><tr><td class="ind-label">Foco:</td><td>{{ capacitados.get_foco_capacitacao_display }}</td></tr></table>
-        {% if capacitados.organizacoes.exists %}
-        <ul class="plain">{% for org in capacitados.organizacoes.all %}<li>{{ org.nome }}</li>{% endfor %}</ul>
-        {% endif %}
-        {% endif %}
+        {% if o.foco %}<table class="ind-table"><tr><td class="ind-label">Foco:</td><td>{{ o.get_foco_display }}</td></tr></table>{% endif %}
+        {% endfor %}
 
-        {% if aplicacao %}
-        <p style="font-weight:bold;color:#8c4a10;margin:6px 0 2px;">Aplicação</p>
+        {% for a in area %}
+        <p style="font-weight:bold;color:#8c4a10;margin:6px 0 2px;">{% if a.indicador %}{{ a.indicador.nome }}{% else %}Área{% endif %}</p>
         <table class="stats-table"><tr>
-            <td><span class="stat-num">{{ aplicacao.total_pessoas }}</span><span class="stat-lbl">Total</span></td>
-            <td><span class="stat-num">{{ aplicacao.homens }}</span><span class="stat-lbl">Homens</span></td>
-            <td><span class="stat-num">{{ aplicacao.mulheres }}</span><span class="stat-lbl">Mulheres</span></td>
-            <td><span class="stat-num">{{ aplicacao.jovens }}</span><span class="stat-lbl">Jovens</span></td>
+            <td><span class="stat-num">{{ a.total_ha|floatformat:2 }}</span><span class="stat-lbl">ha</span></td>
         </tr></table>
-        {% endif %}
+        {% endfor %}
+
+        {% for f in fundos %}
+        <p style="font-weight:bold;color:#8c4a10;margin:6px 0 2px;">{% if f.indicador %}{{ f.indicador.nome }}{% else %}Fundo{% endif %}</p>
+        <table class="stats-table"><tr>
+            <td><span class="stat-num">{{ f.quantidade }}</span><span class="stat-lbl">Chamadas</span></td>
+        </tr></table>
+        {% endfor %}
 
         {% if parcerias %}
         <p style="font-weight:bold;color:#8c4a10;margin:6px 0 2px;">Parcerias ({{ parcerias.total_parcerias }})</p>
@@ -322,31 +326,7 @@
 
         {% if planos %}
         <p style="font-weight:bold;color:#8c4a10;margin:6px 0 2px;">Planos</p>
-        <ul class="plain">{% for p in planos %}{% if p.plano %}<li>{{ p.plano.nome }} ({{ p.plano.tipo }}) — {{ p.situacao_anterior }} → {{ p.situacao_nova }}</li>{% endif %}{% endfor %}</ul>
-        {% endif %}
-
-        {% if area_geral %}
-        <p style="font-weight:bold;color:#8c4a10;margin:6px 0 2px;">Área de Influência Geral</p>
-        <table class="stats-table"><tr>
-            <td><span class="stat-num">{{ area_geral.total_tis }}</span><span class="stat-lbl">TIs</span></td>
-            <td><span class="stat-num">{{ area_geral.total_area|floatformat:0 }}</span><span class="stat-lbl">ha</span></td>
-        </tr></table>
-        {% endif %}
-
-        {% if area_direto %}
-        <p style="font-weight:bold;color:#8c4a10;margin:6px 0 2px;">Área de Influência Direta</p>
-        <table class="stats-table"><tr>
-            <td><span class="stat-num">{{ area_direto.total_tis }}</span><span class="stat-lbl">TIs</span></td>
-            <td><span class="stat-num">{{ area_direto.total_area|floatformat:0 }}</span><span class="stat-lbl">ha</span></td>
-        </tr></table>
-        {% endif %}
-
-        {% if area_restrito %}
-        <p style="font-weight:bold;color:#8c4a10;margin:6px 0 2px;">Área Restrita</p>
-        <table class="ind-table">
-            <tr><td class="ind-label">TI:</td><td>{{ area_restrito.ti.nome }}</td></tr>
-            <tr><td class="ind-label">Área:</td><td>{{ area_restrito.area_em_ha|floatformat:0 }} ha</td></tr>
-        </table>
+        <ul class="plain">{% for p in planos %}{% if p.plano %}<li>{{ p.plano.nome }} ({{ p.plano.tipo }})</li>{% endif %}{% endfor %}</ul>
         {% endif %}
 
         {% if produtos %}

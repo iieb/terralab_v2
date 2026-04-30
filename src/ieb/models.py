@@ -525,11 +525,10 @@ class Meta(models.Model):
                 atividade_registro__in=registros, indicador=self.indicador
             ).count()
         elif tipo == 'planos':
-            ultimo = Planos.objects.filter(
-                atividade_registro__atividade=self.atividade,
-                indicador=self.indicador
-            ).select_related('plano').order_by('-pk').first()
-            valor_direto = SCORE_PLANO.get(ultimo.plano.situacao, 0) if ultimo and ultimo.plano else 0
+            valor_direto = Planos.objects.filter(
+                atividade_registro__in=registros,
+                indicador=self.indicador,
+            ).count()
 
         valor_financiadores = 0
         for fin in IndicadorFinanciador.objects.filter(equivalente_ieb=self.indicador):
@@ -810,9 +809,10 @@ class AreasProtegidas(models.Model):
         return f"{self.atividade_registro} — {self.total} áreas protegidas"
     
 FOCO_CHOICES = [
-    ('implementacao', 'Implementação melhorada/monitoramento/vigilância'),
-    ('ativ_prod',     'Meios de subsistência/cadeia de valor sustentáveis melhorados'),
-    ('governanca',   'Fortalecimento institucional/capacitação organizacional/governança'),
+    ('soc_civil',           'Fortalecimento da sociedade civil'),
+    ('gov_territorial',     'Governança Territorial e Ambiental'),
+    ('defesa_direitos',     'Defesa de Direitos'),
+    ('sociobiodiversidade', 'Economias da Sociobiodiversidade'),
 ]
 
 
@@ -1019,17 +1019,12 @@ class Fundo(models.Model):
     atividade_registro    = models.ForeignKey(AtividadeRegistro, on_delete=models.CASCADE)
     indicador             = models.ForeignKey('Indicador', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(class)s_set')
     indicador_financiador = models.ForeignKey('IndicadorFinanciador', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(class)s_fin_set')
-    quantidade  = models.PositiveIntegerField(default=0)
+    quantidade  = models.PositiveIntegerField(default=1, blank=True)
     valor_total = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     tipo        = models.CharField(max_length=50, choices=FUNDO_TIPO_CHOICES, blank=True)
 
     class Meta:
-        constraints = _satellite_constraints('fundo') + [
-            models.CheckConstraint(
-                check=models.Q(quantidade__gte=1),
-                name='fundo_quantidade_min_1',
-            ),
-        ]
+        constraints = _satellite_constraints('fundo')
 
     def __str__(self):
         return f"{self.atividade_registro} — {self.quantidade} fundos"
@@ -1078,25 +1073,13 @@ class Planos(models.Model):
     )
     situacao_nova = models.CharField(
         max_length=255, choices=Plano.SITUACAO_CHOICES,
-        default='em desenvolvimento'
+        blank=True, default=''
     )
 
     class Meta:
         constraints = _satellite_constraints('planos')
 
-    def save(self, *args, usuario=None, **kwargs):
-        plano = self.plano
-        if plano and not self.pk:  # apenas na criação
-            self.situacao_anterior = plano.situacao
-            if plano.situacao != self.situacao_nova:
-                PlanoHistorico.objects.create(
-                    plano=plano,
-                    situacao_anterior=plano.situacao,
-                    situacao_nova=self.situacao_nova,
-                    usuario=usuario,
-                )
-                plano.situacao = self.situacao_nova
-                plano.save(update_fields=['situacao'])
+    def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
 
     def __str__(self):

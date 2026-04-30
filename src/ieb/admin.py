@@ -306,6 +306,11 @@ admin.site.register(Contratos)
 admin.site.register(Contrato)
 admin.site.register(Modelo)
 admin.site.register(AtividadeRegistroModelo)
+admin.site.register(Fundo)
+admin.site.register(Evento)
+admin.site.register(Area)
+admin.site.register(AreasProtegidas)
+admin.site.register(Organizacoes)
 
 # ---------------------------------------------------------------------------
 # FUNAI / SAÚDE / EDUCAÇÃO
