@@ -30,12 +30,18 @@
             font-weight: 700;
             color: #101828;
         }
+        .context-scope-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+            gap: 16px;
+            margin-bottom: 20px;
+            align-items: stretch;
+        }
         .scope-box {
             background: #f8fafc;
             border: 1px solid #d9dde7;
             border-radius: 10px;
             padding: 16px;
-            margin-bottom: 20px;
         }
         .scope-list {
             margin: 8px 0 0;
@@ -46,6 +52,34 @@
             margin: 28px 0 12px;
             font-size: 1.1rem;
             color: #101828;
+        }
+        .filter-summary {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            cursor: pointer;
+            list-style: none;
+            color: #101828;
+            font-weight: 700;
+        }
+        .filter-summary::-webkit-details-marker {
+            display: none;
+        }
+        .filter-summary::after {
+            content: 'Expandir';
+            padding: 6px 12px;
+            border-radius: 999px;
+            background: #fff4e8;
+            color: #8c4a10;
+            font-size: 0.82rem;
+            font-weight: 700;
+        }
+        .filter-bar[open] .filter-summary::after {
+            content: 'Recolher';
+        }
+        .filter-form {
+            margin-top: 16px;
         }
         .filter-grid {
             display: grid;
@@ -58,7 +92,6 @@
             border: 1px solid #d9dde7;
             border-radius: 10px;
             padding: 16px;
-            margin-bottom: 20px;
         }
         .context-box p {
             margin: 6px 0;
@@ -209,6 +242,128 @@
             flex-direction: column;
             gap: 12px;
         }
+        .consolidated-panel {
+            background: #ffffff;
+            border: 1px solid #d9dde7;
+            border-radius: 14px;
+            padding: 18px;
+            margin: 16px 0 28px;
+            box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+        }
+        .consolidated-grid {
+            display: grid;
+            grid-template-columns: minmax(320px, 1fr) minmax(320px, 1fr);
+            gap: 20px;
+            align-items: start;
+        }
+        .gauge-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+        }
+        .gauge-card {
+            background: #fffef8;
+            border: 1px solid #ece8d8;
+            border-radius: 12px;
+            padding: 14px;
+            text-align: center;
+        }
+        .gauge-title {
+            min-height: 38px;
+            margin-bottom: 8px;
+            color: #344054;
+            font-weight: 700;
+            line-height: 1.25;
+        }
+        .gauge {
+            position: relative;
+            width: 160px;
+            height: 80px;
+            margin: 0 auto 12px;
+            overflow: hidden;
+        }
+        .gauge::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 160px 160px 0 0;
+            background: conic-gradient(from 270deg at 50% 100%, #b42318 0deg 63deg, #d39c52 63deg 90deg, #5b8f5f 90deg 180deg, transparent 180deg 360deg);
+        }
+        .gauge::after {
+            content: '';
+            position: absolute;
+            left: 22px;
+            right: 22px;
+            bottom: 0;
+            height: 58px;
+            border-radius: 116px 116px 0 0;
+            background: #fffef8;
+        }
+        .gauge-needle {
+            position: absolute;
+            left: 50%;
+            bottom: 0;
+            width: 3px;
+            height: 66px;
+            background: #101828;
+            border-radius: 999px;
+            transform-origin: 50% 100%;
+            transform: translateX(-50%) rotate(calc(-90deg + (var(--gauge-value) * 1.8deg)));
+            z-index: 2;
+        }
+        .gauge-center {
+            position: absolute;
+            left: 50%;
+            bottom: -6px;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #101828;
+            transform: translateX(-50%);
+            z-index: 3;
+        }
+        .gauge-value {
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: #101828;
+        }
+        .gauge-meta {
+            margin-top: 6px;
+            color: #667085;
+            font-size: 0.86rem;
+            line-height: 1.35;
+        }
+        .gauge-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 12px;
+            margin-top: 14px;
+            color: #667085;
+            font-size: 0.84rem;
+        }
+        .gauge-legend span::before {
+            content: '';
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        .gauge-legend .critical::before {
+            background: #b42318;
+        }
+        .gauge-legend .attention::before {
+            background: #d39c52;
+        }
+        .gauge-legend .success::before {
+            background: #5b8f5f;
+        }
+        .consolidated-table {
+            margin-top: 4px;
+        }
+        .consolidated-table .table-wrapper {
+            margin: 0;
+        }
         .chart-row {
             display: grid;
             grid-template-columns: minmax(120px, 1fr) 2fr auto;
@@ -293,6 +448,14 @@
             word-break: break-word;
         }
         @media (max-width: 720px) {
+            .context-scope-grid,
+            .consolidated-grid {
+                grid-template-columns: 1fr;
+            }
+            .gauge {
+                width: 140px;
+                height: 70px;
+            }
             .pie-layout {
                 grid-template-columns: 1fr;
             }
@@ -318,7 +481,15 @@
         </div>
     </header>
 
-    <section class="filter-bar">
+    <details class="filter-bar" {% if projeto_selecionado or tipo_indicador or atividade_selecionada or data_inicio or data_fim %}open{% endif %}>
+        <summary class="filter-summary">
+            <span>Filtros</span>
+            {% if projeto_selecionado or tipo_indicador or atividade_selecionada or data_inicio or data_fim %}
+            <span class="cell-muted">Filtros ativos no recorte atual</span>
+            {% else %}
+            <span class="cell-muted">Use para refinar projeto, indicador, atividade ou período</span>
+            {% endif %}
+        </summary>
         <form method="get" class="filter-form">
             <div class="filter-grid">
                 <div class="filter-group">
@@ -362,29 +533,31 @@
             <a href="{% url 'dash_danida' %}" class="btn-limpar">Limpar</a>
             {% endif %}
         </form>
-    </section>
+    </details>
 
-    <section class="context-box">
-        <strong>Recorte atual</strong>
-        <p><strong>Projeto:</strong> {% if projeto_obj %}{{ projeto_obj.nome_fant }}{% else %}Todos os projetos Danida{% endif %}</p>
-        <p><strong>Tipo de indicador:</strong> {% if tipo_indicador_label %}{{ tipo_indicador_label }}{% else %}Todos os tipos do escopo{% endif %}</p>
-        <p><strong>Atividade:</strong> {% if atividade_obj %}{{ atividade_obj.codigo }} — {{ atividade_obj.nome }}{% else %}Todas as atividades{% endif %}</p>
-        <p><strong>Período:</strong>
-            {% if data_inicio or data_fim %}
-                {{ data_inicio|default:'início aberto' }} até {{ data_fim|default:'fim aberto' }}
-            {% else %}
-                sem filtro de período
-            {% endif %}
-        </p>
-    </section>
+    <section class="context-scope-grid">
+        <section class="context-box">
+            <strong>Recorte atual</strong>
+            <p><strong>Projeto:</strong> {% if projeto_obj %}{{ projeto_obj.nome_fant }}{% else %}Todos os projetos Danida{% endif %}</p>
+            <p><strong>Tipo de indicador:</strong> {% if tipo_indicador_label %}{{ tipo_indicador_label }}{% else %}Todos os tipos do escopo{% endif %}</p>
+            <p><strong>Atividade:</strong> {% if atividade_obj %}{{ atividade_obj.codigo }} — {{ atividade_obj.nome }}{% else %}Todas as atividades{% endif %}</p>
+            <p><strong>Período:</strong>
+                {% if data_inicio or data_fim %}
+                    {{ data_inicio|default:'início aberto' }} até {{ data_fim|default:'fim aberto' }}
+                {% else %}
+                    sem filtro de período
+                {% endif %}
+            </p>
+        </section>
 
-    <section class="scope-box">
-        <strong>Escopo monitorado nesta etapa</strong>
-        <ul class="scope-list">
-            {% for tipo in scope_types %}
-            <li>{{ tipo }}</li>
-            {% endfor %}
-        </ul>
+        <section class="scope-box">
+            <strong>Escopo monitorado nesta etapa</strong>
+            <ul class="scope-list">
+                {% for tipo in scope_types %}
+                <li>{{ tipo }}</li>
+                {% endfor %}
+            </ul>
+        </section>
     </section>
 
     <section class="summary-grid">
@@ -414,6 +587,71 @@
         </article>
     </section>
 
+    <h2 class="section-title">Consolidado de metas por tipo</h2>
+    <p class="cell-muted">Resumo dos temas monitorados, com andamento de cumprimento e tabela de valores consolidados.</p>
+    {% if metas_por_tipo %}
+    <section class="consolidated-panel">
+        <div class="consolidated-grid">
+            <article>
+                <h3>Andamento de cumprimento</h3>
+                <p class="cell-muted">Cada marcador mostra o percentual realizado em relação à meta total de cada tipo de indicador.</p>
+                <div class="gauge-grid">
+                    {% for item in grafico_metas_por_tipo %}
+                    <div class="gauge-card">
+                        <div class="gauge-title">{{ item.tipo }}</div>
+                        <div class="gauge" style="--gauge-value: {{ item.gauge_percentual }};">
+                            <div class="gauge-needle"></div>
+                            <div class="gauge-center"></div>
+                        </div>
+                        <div class="gauge-value">{{ item.percentual }}%</div>
+                        <div class="gauge-meta">
+                            {{ item.realizado_total }} realizado de {{ item.meta_total }} previsto<br>
+                            {{ item.quantidade_metas }} meta{% if item.quantidade_metas != 1 %}s{% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="gauge-legend">
+                    <span class="critical">Crítica: abaixo de 70%</span>
+                    <span class="attention">Em atenção: 70% a 99%</span>
+                    <span class="success">Atingida: 100%</span>
+                </div>
+                <div class="chart-note">Leitura: quanto mais à direita o ponteiro estiver, maior o cumprimento acumulado daquele tipo.</div>
+            </article>
+
+            <article class="consolidated-table">
+                <h3>Valores consolidados</h3>
+                <div class="table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Tipo</th>
+                                <th class="cell-num">Metas</th>
+                                <th class="cell-num">Meta total</th>
+                                <th class="cell-num">Realizado</th>
+                                <th class="cell-num">%</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in metas_por_tipo %}
+                            <tr>
+                                <td>{{ item.tipo }}</td>
+                                <td class="cell-num">{{ item.quantidade_metas }}</td>
+                                <td class="cell-num">{{ item.meta_total }}</td>
+                                <td class="cell-num">{{ item.realizado_total }}</td>
+                                <td class="cell-num">{{ item.percentual }}%</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </article>
+        </div>
+    </section>
+    {% else %}
+    <div class="empty-state">Nenhuma meta Danida encontrada no escopo selecionado.</div>
+    {% endif %}
+
     <h2 class="section-title">Leitura rápida dos dados</h2>
     <p class="cell-muted">Apresentação simples para conversar com as equipes e parceiros sobre o andamento das ações.</p>
     <section class="charts-grid">
@@ -439,6 +677,7 @@
             {% endif %}
         </article>
 
+        {% comment %} Bloco oculto temporariamente: haverá apenas um projeto no recorte inicial.
         <article class="chart-card">
             <h3>Projetos com mais registros</h3>
             <p>O gráfico de pizza mostra a participação de cada projeto no total de registros lançados.</p>
@@ -460,6 +699,7 @@
             <div class="empty-state">Sem dados para montar a pizza dos projetos.</div>
             {% endif %}
         </article>
+        {% endcomment %}
     </section>
 
     <section class="charts-grid">
@@ -484,6 +724,7 @@
             {% endif %}
         </article>
 
+        {% comment %} Bloco oculto temporariamente: haverá apenas um projeto no recorte inicial.
         <article class="chart-card">
             <h3>Onde houve mais registros</h3>
             <p>Cada barra mostra em qual projeto houve mais atividades registradas.</p>
@@ -504,6 +745,7 @@
             <div class="empty-state">Sem registros para montar o gráfico por projeto.</div>
             {% endif %}
         </article>
+        {% endcomment %}
 
         <article class="chart-card">
             <h3>Quando houve mais movimento</h3>
@@ -527,6 +769,7 @@
         </article>
     </section>
 
+    {% comment %} Bloco oculto temporariamente: prioridades serão retomadas quando a visualização precisar comparar mais projetos e recortes.
     <h2 class="section-title">Prioridades de acompanhamento</h2>
     <section class="priority-grid">
         <article class="priority-card">
@@ -569,36 +812,7 @@
             {% endif %}
         </article>
     </section>
-
-    <h2 class="section-title">Consolidado de metas por tipo</h2>
-    {% if metas_por_tipo %}
-    <div class="table-wrapper">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Tipo</th>
-                    <th class="cell-num">Metas</th>
-                    <th class="cell-num">Meta total</th>
-                    <th class="cell-num">Realizado</th>
-                    <th class="cell-num">%</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for item in metas_por_tipo %}
-                <tr>
-                    <td>{{ item.tipo }}</td>
-                    <td class="cell-num">{{ item.quantidade_metas }}</td>
-                    <td class="cell-num">{{ item.meta_total }}</td>
-                    <td class="cell-num">{{ item.realizado_total }}</td>
-                    <td class="cell-num">{{ item.percentual }}%</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    {% else %}
-    <div class="empty-state">Nenhuma meta Danida encontrada no escopo selecionado.</div>
-    {% endif %}
+    {% endcomment %}
 
     <h2 class="section-title">Detalhamento das metas</h2>
     {% if detalhe_metas %}

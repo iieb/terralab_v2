@@ -1204,6 +1204,7 @@ def dash_danida_view(request):
         {
             **item,
             'barra_percentual': min(item['percentual'], 100),
+            'gauge_percentual': min(item['percentual'], 100),
         }
         for item in metas_por_tipo
     ]
