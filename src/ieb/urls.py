@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import path
-from .views import atividade_registro_view, atividade_registro_view_v2, load_componentes, load_atividades, load_subatividades, load_equipes, load_equipes_adicionais,load_indicadores, atividade_registro_detalhe_view, teste_parcerias_view,adicionar_parceria, adicionar_plano,atualizar_situacao_plano, adicionar_produto, adicionar_contrato, atualizar_estado_contrato, adicionar_lei, atualizar_situacao_lei, adicionar_modelo, apresentacao_moore, monitoramento_registros_view, monitoramento_metas_view
+from .views import atividade_registro_view, atividade_registro_view_v2, load_componentes, load_atividades, load_subatividades, load_equipes, load_equipes_adicionais,load_indicadores, atividade_registro_detalhe_view, teste_parcerias_view,adicionar_parceria, adicionar_plano,atualizar_situacao_plano, adicionar_produto, adicionar_contrato, atualizar_estado_contrato, adicionar_lei, atualizar_situacao_lei, adicionar_modelo, apresentacao_moore, monitoramento_registros_view, monitoramento_metas_view, dash_danida_view
 from . import views 
 
 urlpatterns = [
@@ -27,6 +27,7 @@ urlpatterns = [
     path('atividade/<int:pk>/anterior/', views.atividade_registro_anterior, name='atividade_registro_anterior'),
     path('atividade/<int:pk>/proximo/', views.atividade_registro_proximo, name='atividade_registro_proximo'),
     path('apresentacao_moore/', apresentacao_moore, name='apresentacao_moore'),
+    path('monitoramento/danida/', dash_danida_view, name='dash_danida'),
     path('monitoramento/registros/', monitoramento_registros_view, name='monitoramento_registros'),
     path('monitoramento/metas/', monitoramento_metas_view, name='monitoramento_metas'),
 

@@ -1,0 +1,708 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Danida</title>
+    <link rel="stylesheet" href="{% static 'ieb/css/monitoramento.css' %}">
+    <style>
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin: 20px 0 24px;
+        }
+        .summary-card {
+            background: #fff;
+            border: 1px solid #d9dde7;
+            border-radius: 10px;
+            padding: 16px;
+            box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+        }
+        .summary-label {
+            font-size: 0.85rem;
+            color: #667085;
+            margin-bottom: 8px;
+        }
+        .summary-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #101828;
+        }
+        .scope-box {
+            background: #f8fafc;
+            border: 1px solid #d9dde7;
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+        .scope-list {
+            margin: 8px 0 0;
+            padding-left: 18px;
+            color: #344054;
+        }
+        .section-title {
+            margin: 28px 0 12px;
+            font-size: 1.1rem;
+            color: #101828;
+        }
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            align-items: end;
+        }
+        .context-box {
+            background: #ffffff;
+            border: 1px solid #d9dde7;
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+        .context-box p {
+            margin: 6px 0;
+            color: #344054;
+        }
+        .status-chip {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            border: 1px solid #d0d5dd;
+            background: #f8fafc;
+            color: #344054;
+        }
+        .status-chip.status-atingida {
+            background: #ecfdf3;
+            color: #027a48;
+            border-color: #abefc6;
+        }
+        .status-chip.status-atencao {
+            background: #fffaeb;
+            color: #b54708;
+            border-color: #fedf89;
+        }
+        .status-chip.status-critica {
+            background: #fef3f2;
+            color: #b42318;
+            border-color: #fecdca;
+        }
+        .priority-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .priority-card {
+            background: #fff;
+            border: 1px solid #d9dde7;
+            border-radius: 10px;
+            padding: 16px;
+        }
+        .priority-card h3 {
+            margin: 0 0 12px;
+            font-size: 1rem;
+            color: #101828;
+        }
+        .priority-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+        .priority-list li {
+            border-top: 1px solid #eaecf0;
+            padding: 12px 0;
+        }
+        .priority-list li:first-child {
+            border-top: 0;
+            padding-top: 0;
+        }
+        .priority-meta {
+            display: block;
+            margin-top: 4px;
+            color: #667085;
+            font-size: 0.9rem;
+        }
+        .priority-actions {
+            margin-top: 8px;
+        }
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 20px;
+            margin: 12px 0 28px;
+        }
+        .chart-card {
+            background: #fffef8;
+            border: 1px solid #d6d3c4;
+            border-radius: 14px;
+            padding: 18px;
+            box-shadow: none;
+        }
+        .chart-card h3 {
+            margin: 0 0 6px;
+            font-size: 1rem;
+            color: #2f3a2f;
+        }
+        .chart-card p {
+            margin: 0 0 14px;
+            color: #5b645b;
+            font-size: 0.92rem;
+            line-height: 1.45;
+        }
+        .chart-note {
+            margin-top: 12px;
+            font-size: 0.84rem;
+            color: #667085;
+        }
+        .pie-layout {
+            display: grid;
+            grid-template-columns: minmax(180px, 220px) 1fr;
+            gap: 18px;
+            align-items: center;
+        }
+        .pie-visual {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            border: 10px solid #ffffff;
+            margin: 0 auto;
+            box-shadow: inset 0 0 0 1px #ece8d8;
+        }
+        .pie-legend {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .pie-legend li {
+            display: grid;
+            grid-template-columns: 16px 1fr auto;
+            gap: 10px;
+            align-items: center;
+            padding: 8px 10px;
+            background: #ffffff;
+            border: 1px solid #ece8d8;
+            border-radius: 10px;
+            font-size: 0.9rem;
+        }
+        .pie-swatch {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .pie-label {
+            color: #344054;
+            font-weight: 600;
+        }
+        .pie-value {
+            color: #2f3a2f;
+            font-weight: 700;
+        }
+        .chart-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .chart-row {
+            display: grid;
+            grid-template-columns: minmax(120px, 1fr) 2fr auto;
+            gap: 12px;
+            align-items: center;
+            font-size: 0.9rem;
+            padding: 10px 12px;
+            background: #ffffff;
+            border: 1px solid #ece8d8;
+            border-radius: 10px;
+        }
+        .chart-label {
+            color: #344054;
+            font-weight: 600;
+        }
+        .chart-value {
+            font-weight: 700;
+            color: #2f3a2f;
+        }
+        .bar-track {
+            width: 100%;
+            height: 14px;
+            border-radius: 999px;
+            background: #e9e4d4;
+            overflow: hidden;
+        }
+        .bar-fill {
+            height: 100%;
+            background: #7a9e7e;
+            border-radius: 999px;
+        }
+        .bar-fill.success {
+            background: #5b8f5f;
+        }
+        .bar-fill.warning {
+            background: #d39c52;
+        }
+        .column-chart {
+            display: flex;
+            align-items: flex-end;
+            gap: 12px;
+            min-height: 220px;
+            padding: 16px 12px 8px;
+            background: #ffffff;
+            border: 1px solid #ece8d8;
+            border-radius: 10px;
+        }
+        .column-item {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+        .column-value {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #2f3a2f;
+        }
+        .column-bar-track {
+            width: 100%;
+            max-width: 56px;
+            height: 180px;
+            background: #e9e4d4;
+            border-radius: 10px 10px 4px 4px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: flex-end;
+        }
+        .column-bar-fill {
+            width: 100%;
+            background: #7a9e7e;
+            border-radius: 10px 10px 4px 4px;
+            min-height: 6px;
+        }
+        .column-label {
+            font-size: 0.8rem;
+            color: #667085;
+            text-align: center;
+            word-break: break-word;
+        }
+        @media (max-width: 720px) {
+            .pie-layout {
+                grid-template-columns: 1fr;
+            }
+            .pie-visual {
+                width: 180px;
+                height: 180px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="page-wrapper">
+
+    <header class="dash-header">
+        <div>
+            <h1>Dashboard Danida</h1>
+            <p class="cell-muted">Visão executiva do escopo Danida no TerraLab com filtros, consolidação de metas e acompanhamento recente.</p>
+        </div>
+        <div class="header-links">
+            <a href="{% url 'monitoramento_registros' %}">Ver registros</a>
+            <a href="{% url 'monitoramento_metas' %}">Ver metas</a>
+        </div>
+    </header>
+
+    <section class="filter-bar">
+        <form method="get" class="filter-form">
+            <div class="filter-grid">
+                <div class="filter-group">
+                    <label for="projeto">Projeto Danida</label>
+                    <select id="projeto" name="projeto">
+                        <option value="">Todos</option>
+                        {% for p in projetos %}
+                        <option value="{{ p.id }}" {% if p.selecionado %}selected{% endif %}>{{ p.nome_fant }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="tipo">Tipo de indicador</label>
+                    <select id="tipo" name="tipo">
+                        <option value="">Todos</option>
+                        {% for tipo in tipos_disponiveis %}
+                        <option value="{{ tipo.valor }}" {% if tipo.selecionado %}selected{% endif %}>{{ tipo.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="atividade">Atividade</label>
+                    <select id="atividade" name="atividade">
+                        <option value="">Todas</option>
+                        {% for atividade in atividades_disponiveis %}
+                        <option value="{{ atividade.id }}" {% if atividade.selecionada %}selected{% endif %}>{{ atividade.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="data_inicio">Data inicial</label>
+                    <input id="data_inicio" type="date" name="data_inicio" value="{{ data_inicio|default:'' }}">
+                </div>
+                <div class="filter-group">
+                    <label for="data_fim">Data final</label>
+                    <input id="data_fim" type="date" name="data_fim" value="{{ data_fim|default:'' }}">
+                </div>
+            </div>
+            <button type="submit" class="btn-filtrar">Filtrar</button>
+            {% if projeto_selecionado or tipo_indicador or atividade_selecionada or data_inicio or data_fim %}
+            <a href="{% url 'dash_danida' %}" class="btn-limpar">Limpar</a>
+            {% endif %}
+        </form>
+    </section>
+
+    <section class="context-box">
+        <strong>Recorte atual</strong>
+        <p><strong>Projeto:</strong> {% if projeto_obj %}{{ projeto_obj.nome_fant }}{% else %}Todos os projetos Danida{% endif %}</p>
+        <p><strong>Tipo de indicador:</strong> {% if tipo_indicador_label %}{{ tipo_indicador_label }}{% else %}Todos os tipos do escopo{% endif %}</p>
+        <p><strong>Atividade:</strong> {% if atividade_obj %}{{ atividade_obj.codigo }} — {{ atividade_obj.nome }}{% else %}Todas as atividades{% endif %}</p>
+        <p><strong>Período:</strong>
+            {% if data_inicio or data_fim %}
+                {{ data_inicio|default:'início aberto' }} até {{ data_fim|default:'fim aberto' }}
+            {% else %}
+                sem filtro de período
+            {% endif %}
+        </p>
+    </section>
+
+    <section class="scope-box">
+        <strong>Escopo monitorado nesta etapa</strong>
+        <ul class="scope-list">
+            {% for tipo in scope_types %}
+            <li>{{ tipo }}</li>
+            {% endfor %}
+        </ul>
+    </section>
+
+    <section class="summary-grid">
+        <article class="summary-card">
+            <div class="summary-label">Projetos Danida</div>
+            <div class="summary-value">{{ resumo.total_projetos }}</div>
+        </article>
+        <article class="summary-card">
+            <div class="summary-label">Registros de atividade</div>
+            <div class="summary-value">{{ resumo.total_registros }}</div>
+        </article>
+        <article class="summary-card">
+            <div class="summary-label">Metas no escopo</div>
+            <div class="summary-value">{{ resumo.total_metas }}</div>
+        </article>
+        <article class="summary-card">
+            <div class="summary-label">Indicadores ativos</div>
+            <div class="summary-value">{{ resumo.indicadores_ativos }}</div>
+        </article>
+        <article class="summary-card">
+            <div class="summary-label">Metas atingidas</div>
+            <div class="summary-value">{{ resumo.metas_atingidas }}</div>
+        </article>
+        <article class="summary-card">
+            <div class="summary-label">Cumprimento das metas</div>
+            <div class="summary-value">{{ resumo.percentual_metas_atingidas }}%</div>
+        </article>
+    </section>
+
+    <h2 class="section-title">Leitura rápida dos dados</h2>
+    <p class="cell-muted">Apresentação simples para conversar com as equipes e parceiros sobre o andamento das ações.</p>
+    <section class="charts-grid">
+        <article class="chart-card">
+            <h3>Temas com mais metas</h3>
+            <p>O gráfico de pizza mostra como as metas estão distribuídas entre os temas acompanhados.</p>
+            {% if pizza_metas_por_tipo.legend %}
+            <div class="pie-layout">
+                <div class="pie-visual" style="background: {{ pizza_metas_por_tipo.style }};"></div>
+                <ul class="pie-legend">
+                    {% for item in pizza_metas_por_tipo.legend %}
+                    <li>
+                        <span class="pie-swatch" style="background: {{ item.color }};"></span>
+                        <span class="pie-label">{{ item.label }}</span>
+                        <span class="pie-value">{{ item.percent }}%</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <div class="chart-note">Leitura: cada fatia mostra a parte de um tema no conjunto das metas.</div>
+            {% else %}
+            <div class="empty-state">Sem dados para montar a pizza dos temas.</div>
+            {% endif %}
+        </article>
+
+        <article class="chart-card">
+            <h3>Projetos com mais registros</h3>
+            <p>O gráfico de pizza mostra a participação de cada projeto no total de registros lançados.</p>
+            {% if pizza_registros_por_projeto.legend %}
+            <div class="pie-layout">
+                <div class="pie-visual" style="background: {{ pizza_registros_por_projeto.style }};"></div>
+                <ul class="pie-legend">
+                    {% for item in pizza_registros_por_projeto.legend %}
+                    <li>
+                        <span class="pie-swatch" style="background: {{ item.color }};"></span>
+                        <span class="pie-label">{{ item.label }}</span>
+                        <span class="pie-value">{{ item.percent }}%</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <div class="chart-note">Leitura: cada fatia mostra a parte de cada projeto no total de registros.</div>
+            {% else %}
+            <div class="empty-state">Sem dados para montar a pizza dos projetos.</div>
+            {% endif %}
+        </article>
+    </section>
+
+    <section class="charts-grid">
+        <article class="chart-card">
+            <h3>Como está o andamento por tema</h3>
+            <p>Cada barra mostra o quanto das metas já foi alcançado em cada tema do projeto.</p>
+            {% if grafico_metas_por_tipo %}
+            <div class="chart-list">
+                {% for item in grafico_metas_por_tipo %}
+                <div class="chart-row">
+                    <span class="chart-label">{{ item.tipo }}</span>
+                    <div class="bar-track">
+                        <div class="bar-fill {% if item.percentual >= 100 %}success{% elif item.percentual >= 70 %}warning{% endif %}" style="width: {{ item.barra_percentual }}%;"></div>
+                    </div>
+                    <span class="chart-value">{{ item.percentual }}%</span>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="chart-note">Leitura: barra maior significa avanço maior da meta.</div>
+            {% else %}
+            <div class="empty-state">Sem metas suficientes para montar o gráfico.</div>
+            {% endif %}
+        </article>
+
+        <article class="chart-card">
+            <h3>Onde houve mais registros</h3>
+            <p>Cada barra mostra em qual projeto houve mais atividades registradas.</p>
+            {% if grafico_registros_por_projeto %}
+            <div class="chart-list">
+                {% for item in grafico_registros_por_projeto %}
+                <div class="chart-row">
+                    <span class="chart-label">{{ item.projeto }}</span>
+                    <div class="bar-track">
+                        <div class="bar-fill" style="width: {{ item.largura }}%;"></div>
+                    </div>
+                    <span class="chart-value">{{ item.total }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="chart-note">Leitura: barra maior significa mais registros lançados.</div>
+            {% else %}
+            <div class="empty-state">Sem registros para montar o gráfico por projeto.</div>
+            {% endif %}
+        </article>
+
+        <article class="chart-card">
+            <h3>Quando houve mais movimento</h3>
+            <p>As colunas mostram os meses com mais registros de atividade.</p>
+            {% if grafico_registros_periodo %}
+            <div class="column-chart">
+                {% for item in grafico_registros_periodo %}
+                <div class="column-item">
+                    <span class="column-value">{{ item.total }}</span>
+                    <div class="column-bar-track">
+                        <div class="column-bar-fill" style="height: {{ item.altura }}%;"></div>
+                    </div>
+                    <span class="column-label">{{ item.label }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="chart-note">Leitura: coluna mais alta significa mês com mais registros.</div>
+            {% else %}
+            <div class="empty-state">Sem dados de período para montar o gráfico.</div>
+            {% endif %}
+        </article>
+    </section>
+
+    <h2 class="section-title">Prioridades de acompanhamento</h2>
+    <section class="priority-grid">
+        <article class="priority-card">
+            <h3>Metas críticas</h3>
+            {% if metas_criticas %}
+            <ul class="priority-list">
+                {% for item in metas_criticas %}
+                <li>
+                    <strong>{{ item.indicador }}</strong>
+                    <span class="priority-meta">{{ item.projeto }} · {{ item.atividade }}</span>
+                    <span class="priority-meta">{{ item.realizado }} de {{ item.meta }} · {{ item.percentual }}% · prazo {{ item.prazo|date:"d/m/Y" }}</span>
+                    <div class="priority-actions">
+                        <a href="{% url 'monitoramento_metas' %}?projeto={{ item.projeto_id }}">Abrir metas do projeto</a>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <div class="empty-state">Nenhuma meta crítica no recorte atual.</div>
+            {% endif %}
+        </article>
+
+        <article class="priority-card">
+            <h3>Metas em atenção</h3>
+            {% if metas_em_atencao %}
+            <ul class="priority-list">
+                {% for item in metas_em_atencao %}
+                <li>
+                    <strong>{{ item.indicador }}</strong>
+                    <span class="priority-meta">{{ item.projeto }} · {{ item.atividade }}</span>
+                    <span class="priority-meta">{{ item.realizado }} de {{ item.meta }} · {{ item.percentual }}% · prazo {{ item.prazo|date:"d/m/Y" }}</span>
+                    <div class="priority-actions">
+                        <a href="{% url 'monitoramento_metas' %}?projeto={{ item.projeto_id }}">Abrir metas do projeto</a>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <div class="empty-state">Nenhuma meta em atenção no recorte atual.</div>
+            {% endif %}
+        </article>
+    </section>
+
+    <h2 class="section-title">Consolidado de metas por tipo</h2>
+    {% if metas_por_tipo %}
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Tipo</th>
+                    <th class="cell-num">Metas</th>
+                    <th class="cell-num">Meta total</th>
+                    <th class="cell-num">Realizado</th>
+                    <th class="cell-num">%</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in metas_por_tipo %}
+                <tr>
+                    <td>{{ item.tipo }}</td>
+                    <td class="cell-num">{{ item.quantidade_metas }}</td>
+                    <td class="cell-num">{{ item.meta_total }}</td>
+                    <td class="cell-num">{{ item.realizado_total }}</td>
+                    <td class="cell-num">{{ item.percentual }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">Nenhuma meta Danida encontrada no escopo selecionado.</div>
+    {% endif %}
+
+    <h2 class="section-title">Detalhamento das metas</h2>
+    {% if detalhe_metas %}
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Projeto</th>
+                    <th>Atividade</th>
+                    <th>Indicador</th>
+                    <th>Tipo</th>
+                    <th class="cell-num">Meta</th>
+                    <th class="cell-num">Realizado</th>
+                    <th class="cell-num">%</th>
+                    <th>Status</th>
+                    <th>Prazo</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in detalhe_metas %}
+                <tr>
+                    <td>{{ item.projeto }}</td>
+                    <td>{{ item.atividade }}</td>
+                    <td>{{ item.indicador }}</td>
+                    <td>{{ item.tipo }}</td>
+                    <td class="cell-num">{{ item.meta }}</td>
+                    <td class="cell-num">{{ item.realizado }}</td>
+                    <td class="cell-num">{{ item.percentual }}%</td>
+                    <td>
+                        <span class="status-chip {% if item.status == 'Atingida' %}status-atingida{% elif item.status == 'Em atenção' %}status-atencao{% else %}status-critica{% endif %}">
+                            {{ item.status }}
+                        </span>
+                    </td>
+                    <td class="cell-date">{{ item.prazo|date:"d/m/Y" }}</td>
+                    <td><a href="{% url 'monitoramento_metas' %}?projeto={{ item.projeto_id }}">Metas</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">Nenhuma meta detalhada para exibir neste recorte.</div>
+    {% endif %}
+
+    <h2 class="section-title">Registros por projeto</h2>
+    {% if registros_por_projeto %}
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Projeto</th>
+                    <th class="cell-num">Registros</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in registros_por_projeto %}
+                <tr>
+                    <td>{{ item.projeto__nome_fant }}</td>
+                    <td class="cell-num">{{ item.total }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">Nenhum registro Danida encontrado.</div>
+    {% endif %}
+
+    <h2 class="section-title">Últimos registros</h2>
+    {% if ultimos_registros %}
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Projeto</th>
+                    <th>Atividade</th>
+                    <th>Responsável</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for registro in ultimos_registros %}
+                <tr>
+                    <td class="cell-date">{{ registro.data_inicio|date:"d/m/Y" }}</td>
+                    <td>{{ registro.projeto.nome_fant }}</td>
+                    <td>{{ registro.atividade.nome }}</td>
+                    <td class="cell-muted">{{ registro.equipe_projeto.equipe.nome }}</td>
+                    <td>
+                        <a href="{% url 'atividade_registro_detalhe' registro.pk %}" class="link-detalhe">Ver</a>
+                        ·
+                        <a href="{% url 'monitoramento_registros' %}?projeto={{ registro.projeto.id }}">Projeto</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">Nenhum registro recente para exibir.</div>
+    {% endif %}
+
+</div>
+
+</body>
+</html>

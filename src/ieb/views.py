@@ -5,6 +5,8 @@ logger = logging.getLogger(__name__)
 
 # Create your views here.
 from django.shortcuts import render, redirect, get_object_or_404
+from django.db.models import Count, Q
+from django.db.models.functions import TruncMonth
 from django.http import JsonResponse
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -20,6 +22,7 @@ from .models import (
     Lei, LeiHistorico, Mobilizados, Modelo, AtividadeRegistroModelo,
     FOCO_CHOICES,
     REDE_TIPO_CHOICES,
+    INDICADOR_TIPO_CHOICES,
 )
 from django.views.decorators.csrf import csrf_exempt
 import unicodedata
@@ -993,6 +996,289 @@ def apresentacao_moore(request):
 # ---------------------------------------------------------------------------
 # DASHBOARD DE MONITORAMENTO
 # ---------------------------------------------------------------------------
+
+DANIDA_SCOPE_TYPES = ['pessoas', 'organizacoes', 'area', 'fundos', 'planos']
+PIE_COLORS = ['#5b8f5f', '#d39c52', '#8b6f47', '#7b8cde', '#c97b84', '#6f9e9a']
+
+
+def _danida_projects_queryset():
+    return Projeto.objects.filter(
+        Q(financiadores__sigla__icontains='danida') |
+        Q(financiadores__nome__icontains='danida') |
+        Q(nome__icontains='danida') |
+        Q(nome_fant__icontains='danida')
+    ).distinct()
+
+
+def _classificar_percentual_meta(percentual):
+    if percentual >= 100:
+        return 'Atingida'
+    if percentual >= 70:
+        return 'Em atenção'
+    return 'Crítica'
+
+
+def _prioridade_status_meta(percentual):
+    if percentual < 70:
+        return 0
+    if percentual < 100:
+        return 1
+    return 2
+
+
+def _build_pie_chart(items, label_key, value_key):
+    total = sum((item.get(value_key) or 0) for item in items)
+    if not total:
+        return {
+            'total': 0,
+            'style': 'conic-gradient(#e9e4d4 0 100%)',
+            'legend': [],
+        }
+
+    current = 0
+    segments = []
+    legend = []
+    for index, item in enumerate(items):
+        value = item.get(value_key) or 0
+        if value <= 0:
+            continue
+        percent = round((value / total) * 100, 1)
+        color = PIE_COLORS[index % len(PIE_COLORS)]
+        start = current
+        end = current + percent
+        segments.append(f'{color} {start}% {end}%')
+        current = end
+        legend.append({
+            'label': item.get(label_key),
+            'value': value,
+            'percent': percent,
+            'color': color,
+        })
+
+    if legend:
+        last = legend[-1]
+        adjustment = round(100 - sum(entry['percent'] for entry in legend), 1)
+        if adjustment:
+            last['percent'] = round(last['percent'] + adjustment, 1)
+        segments[-1] = f"{last['color']} {100 - last['percent']}% 100%"
+
+    return {
+        'total': total,
+        'style': f"conic-gradient({', '.join(segments)})",
+        'legend': legend,
+    }
+
+
+@login_required
+def dash_danida_view(request):
+    """Dashboard executivo inicial para acompanhamento do escopo Danida."""
+    projeto_id = request.GET.get('projeto')
+    tipo_indicador = request.GET.get('tipo')
+    atividade_id_str = request.GET.get('atividade')
+    data_inicio = request.GET.get('data_inicio')
+    data_fim = request.GET.get('data_fim')
+
+    tipo_label_map = dict(INDICADOR_TIPO_CHOICES)
+    tipos_disponiveis = [
+        {
+            'valor': tipo,
+            'label': tipo_label_map.get(tipo, tipo.title()),
+            'selecionado': tipo == tipo_indicador,
+        }
+        for tipo in DANIDA_SCOPE_TYPES
+    ]
+    tipo_indicador_label = (
+        tipo_label_map[tipo_indicador] if tipo_indicador in DANIDA_SCOPE_TYPES else None
+    )
+
+    projetos_qs = _danida_projects_queryset().order_by('nome_fant')
+    projeto_obj = projetos_qs.filter(id=projeto_id).first() if projeto_id else None
+    atividades_qs = Atividade.objects.select_related('componente__projeto').filter(
+        componente__projeto__in=projetos_qs
+    )
+    if projeto_id:
+        atividades_qs = atividades_qs.filter(componente__projeto_id=projeto_id)
+    atividades_qs = atividades_qs.order_by('codigo', 'nome').distinct()
+    atividade_obj = atividades_qs.filter(id=atividade_id_str).first() if atividade_id_str else None
+    atividade_id_selecionada = str(atividade_obj.id) if atividade_obj else ''
+
+    registros_qs = AtividadeRegistro.objects.select_related(
+        'projeto', 'atividade', 'equipe_projeto__equipe'
+    ).filter(projeto__in=projetos_qs)
+    metas_qs = Meta.objects.select_related(
+        'atividade__componente__projeto', 'indicador'
+    ).filter(
+        atividade__componente__projeto__in=projetos_qs,
+        indicador__tipo__in=DANIDA_SCOPE_TYPES,
+    )
+
+    if projeto_id:
+        registros_qs = registros_qs.filter(projeto_id=projeto_id)
+        metas_qs = metas_qs.filter(atividade__componente__projeto_id=projeto_id)
+    if atividade_id_selecionada:
+        registros_qs = registros_qs.filter(atividade_id=atividade_id_selecionada)
+        metas_qs = metas_qs.filter(atividade_id=atividade_id_selecionada)
+    if tipo_indicador in DANIDA_SCOPE_TYPES:
+        metas_qs = metas_qs.filter(indicador__tipo=tipo_indicador)
+    if data_inicio:
+        registros_qs = registros_qs.filter(data_inicio__gte=data_inicio)
+        metas_qs = metas_qs.filter(data__gte=data_inicio)
+    if data_fim:
+        registros_qs = registros_qs.filter(data_inicio__lte=data_fim)
+        metas_qs = metas_qs.filter(data__lte=data_fim)
+
+    metas_lista = list(metas_qs)
+
+    # Meta.realizado is a costly @property (aggregation queries per instance).
+    # Pre-compute once per meta and reuse throughout to avoid N+1 overhead.
+    # TODO: Replace with batch annotation on the queryset when graduating
+    #       from prototype to production.
+    metas_realizado = {}
+    for meta in metas_lista:
+        metas_realizado[meta.id] = meta.realizado
+
+    metas_por_tipo = []
+    detalhe_metas = []
+    metas_atingidas = 0
+
+    for tipo in DANIDA_SCOPE_TYPES:
+        metas_tipo = [m for m in metas_lista if m.indicador.tipo == tipo]
+        if not metas_tipo:
+            continue
+        meta_total = sum((m.meta or 0) for m in metas_tipo)
+        realizado_total = sum(metas_realizado[m.id] for m in metas_tipo)
+        percentual = round((realizado_total / meta_total) * 100, 1) if meta_total else 0
+        metas_por_tipo.append({
+            'tipo': tipo_label_map.get(tipo, tipo.title()),
+            'quantidade_metas': len(metas_tipo),
+            'meta_total': meta_total,
+            'realizado_total': realizado_total,
+            'percentual': percentual,
+        })
+
+    for meta in sorted(
+        metas_lista,
+        key=lambda item: (
+            _prioridade_status_meta(
+                round((metas_realizado[item.id] / item.meta) * 100, 1) if item.meta else 0
+            ),
+            round((metas_realizado[item.id] / item.meta) * 100, 1) if item.meta else 0,
+            item.data,
+            item.atividade.componente.projeto.nome_fant,
+            item.atividade.codigo,
+            item.indicador.nome,
+        )
+    ):
+        realizado = metas_realizado[meta.id]
+        percentual = round((realizado / meta.meta) * 100, 1) if meta.meta else 0
+        if percentual >= 100:
+            metas_atingidas += 1
+        detalhe_metas.append({
+            'projeto': meta.atividade.componente.projeto.nome_fant,
+            'projeto_id': meta.atividade.componente.projeto.id,
+            'atividade': f"{meta.atividade.codigo} — {meta.atividade.nome}",
+            'indicador': meta.indicador.nome,
+            'tipo': meta.indicador.get_tipo_display(),
+            'meta': meta.meta,
+            'realizado': realizado,
+            'percentual': percentual,
+            'status': _classificar_percentual_meta(percentual),
+            'prazo': meta.data,
+        })
+
+    registros_por_projeto = list(
+        registros_qs.values('projeto__id', 'projeto__nome_fant')
+        .annotate(total=Count('id'))
+        .order_by('projeto__nome_fant')
+    )
+    max_registros_projeto = max((item['total'] for item in registros_por_projeto), default=0)
+    grafico_registros_por_projeto = [
+        {
+            'projeto': item['projeto__nome_fant'],
+            'total': item['total'],
+            'largura': round((item['total'] / max_registros_projeto) * 100, 1) if max_registros_projeto else 0,
+        }
+        for item in registros_por_projeto
+    ]
+    grafico_metas_por_tipo = [
+        {
+            **item,
+            'barra_percentual': min(item['percentual'], 100),
+        }
+        for item in metas_por_tipo
+    ]
+    registros_por_mes_qs = list(
+        registros_qs.annotate(mes=TruncMonth('data_inicio'))
+        .values('mes')
+        .annotate(total=Count('id'))
+        .order_by('mes')
+    )
+    max_registros_mes = max((item['total'] for item in registros_por_mes_qs), default=0)
+    grafico_registros_periodo = [
+        {
+            'label': item['mes'].strftime('%m/%Y') if item['mes'] else 'Sem data',
+            'total': item['total'],
+            'altura': round((item['total'] / max_registros_mes) * 100, 1) if max_registros_mes else 0,
+        }
+        for item in registros_por_mes_qs
+    ]
+    pizza_metas_por_tipo = _build_pie_chart(grafico_metas_por_tipo, 'tipo', 'quantidade_metas')
+    pizza_registros_por_projeto = _build_pie_chart(grafico_registros_por_projeto, 'projeto', 'total')
+
+    total_metas = len(metas_lista)
+    percentual_metas_atingidas = round((metas_atingidas / total_metas) * 100, 1) if total_metas else 0
+    metas_criticas = [item for item in detalhe_metas if item['status'] == 'Crítica'][:5]
+    metas_em_atencao = [item for item in detalhe_metas if item['status'] == 'Em atenção'][:5]
+
+    context = {
+        'projetos': [
+            {
+                'id': projeto.id,
+                'nome_fant': projeto.nome_fant,
+                'selecionado': bool(projeto_obj and projeto_obj.id == projeto.id),
+            }
+            for projeto in projetos_qs
+        ],
+        'atividades_disponiveis': [
+            {
+                'id': atividade.id,
+                'nome': f"{atividade.codigo} — {atividade.nome}",
+                'selecionada': bool(atividade_obj and atividade_obj.id == atividade.id),
+            }
+            for atividade in atividades_qs
+        ],
+        'projeto_obj': projeto_obj,
+        'projeto_selecionado': projeto_id,
+        'atividade_obj': atividade_obj,
+        'atividade_selecionada': atividade_id_selecionada,
+        'tipo_indicador': tipo_indicador,
+        'tipo_indicador_label': tipo_indicador_label,
+        'tipos_disponiveis': tipos_disponiveis,
+        'data_inicio': data_inicio,
+        'data_fim': data_fim,
+        'scope_types': [tipo_label_map.get(tipo, tipo.title()) for tipo in DANIDA_SCOPE_TYPES],
+        'resumo': {
+            'total_projetos': projetos_qs.count() if not projeto_id else projetos_qs.filter(id=projeto_id).count(),
+            'total_registros': registros_qs.count(),
+            'total_metas': total_metas,
+            'indicadores_ativos': len({m.indicador_id for m in metas_lista}),
+            'metas_atingidas': metas_atingidas,
+            'percentual_metas_atingidas': percentual_metas_atingidas,
+        },
+        'metas_por_tipo': metas_por_tipo,
+        'detalhe_metas': detalhe_metas,
+        'metas_criticas': metas_criticas,
+        'metas_em_atencao': metas_em_atencao,
+        'registros_por_projeto': registros_por_projeto,
+        'grafico_metas_por_tipo': grafico_metas_por_tipo,
+        'grafico_registros_por_projeto': grafico_registros_por_projeto,
+        'grafico_registros_periodo': grafico_registros_periodo,
+        'pizza_metas_por_tipo': pizza_metas_por_tipo,
+        'pizza_registros_por_projeto': pizza_registros_por_projeto,
+        'ultimos_registros': registros_qs.order_by('-data_inicio', '-id')[:10],
+    }
+    return render(request, 'dash_danida.html', context)
+
 
 @login_required
 def monitoramento_registros_view(request):
