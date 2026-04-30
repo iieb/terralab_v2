@@ -18,6 +18,8 @@ from .models import (
     TIs, UC, PA, TUC,
     Produtos, Produto, Contrato, Contratos,
     Lei, LeiHistorico, Mobilizados, Modelo, AtividadeRegistroModelo,
+    FOCO_CHOICES,
+    REDE_TIPO_CHOICES,
 )
 from django.views.decorators.csrf import csrf_exempt
 import unicodedata
@@ -880,12 +882,7 @@ def _atividade_registro_process(request, template='atividade_registro_form.html'
     leis         = Lei.objects.all()
     modelos_existentes = Modelo.objects.all()
 
-    _foco_options = [
-        {"value": "soc_civil",           "label": "Fortalecimento da sociedade civil"},
-        {"value": "gov_territorial",     "label": "Governança Territorial e Ambiental"},
-        {"value": "defesa_direitos",     "label": "Defesa de Direitos"},
-        {"value": "sociobiodiversidade", "label": "Economias da Sociobiodiversidade"},
-    ]
+    _foco_options = [{"value": v, "label": l} for v, l in FOCO_CHOICES]
 
     indicadores_config = {
         "pessoas": [
@@ -929,12 +926,7 @@ def _atividade_registro_process(request, template='atividade_registro_form.html'
         ],
         "redes": [
             {"name": "nome", "type": "text", "label": "Nome da Rede"},
-            {"name": "tipo", "type": "select", "label": "Tipo", "options": [
-                {"value": "local", "label": "Local"},
-                {"value": "regional", "label": "Regional"},
-                {"value": "nacional", "label": "Nacional"},
-                {"value": "internacional", "label": "Internacional"},
-            ]},
+            {"name": "tipo", "type": "select", "label": "Tipo", "options": [{"value": v, "label": l} for v, l in REDE_TIPO_CHOICES]},
             {"name": "quantidade", "type": "number", "label": "Quantidade"},
         ],
         "pequenos_projetos": [
